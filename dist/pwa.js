@@ -1,0 +1,24 @@
+export async function startPWA({prepareUpdate}){
+ const $=id=>document.getElementById(id),button=$('installApp'),installed=$('installedApp'),update=$('updateApp'),status=$('offlineState'),notice=$('offlineNotice');let prompt=null,registration=null,detected=false,applying=false,ready=false;
+ const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ const note=text=>{$('installMessage').textContent=text;};
+ function installation(){const yes=detected||standalone();installed.hidden=!yes;button.hidden=yes;}
+ function connectivity(){status.textContent=ready?(navigator.onLine?'Ready for offline use':'Offline · saved reports and local tools available'):(navigator.onLine?'Preparing offline access…':'Offline access is not ready in this browser.');notice.hidden=navigator.onLine;notice.textContent=ready?'You are offline. Reports are saved in this browser; local imports, editing and exports remain available.':'You are offline. Reconnect once to prepare offline access.';}
+ async function ask(worker){return new Promise((resolve,reject)=>{const channel=new MessageChannel(),timer=setTimeout(()=>reject(Error('Could not confirm offline readiness.')),4000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data);};worker.postMessage({type:'STATUS'},[channel.port2]);});}
+ async function readiness(){if(!registration?.active)return;try{ready=!!(await ask(registration.active)).ready;connectivity();}catch{status.textContent='Offline readiness could not be confirmed.';}}
+ function pending(){update.hidden=!registration?.waiting;}
+ window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();prompt=event;detected=false;installation();});
+ window.addEventListener('appinstalled',()=>{detected=true;prompt=null;installation();note('Installed. Open Report Studio from your device’s apps.');});
+ matchMedia('(display-mode: standalone)').addEventListener('change',installation);
+ button.onclick=async()=>{if(prompt){const current=prompt;prompt=null;try{await current.prompt();}catch{note('The browser install prompt is unavailable. Use the installation instructions.');$('installHelpDialog').showModal();return;}const result=await current.userChoice;if(result.outcome==='accepted')note('Installation requested. Your browser will confirm when it is installed.');else note('Installation cancelled. You can still use the browser version.');}else $('installHelpDialog').showModal();};
+ $('closeInstallHelp').onclick=()=>$('installHelpDialog').close();
+ $('checkAppUpdate').onclick=async()=>{if(!registration||!navigator.onLine){note('Connect to the internet to check for updates.');return;}try{await registration.update();pending();note(registration.waiting?'Update available. Close this dialog and choose Update available.':'Update check requested. A new version will be indicated when ready.');}catch{note('Could not check for updates. Try again when connected.');}};
+ update.onclick=async()=>{if(applying||!registration?.waiting)return;applying=true;update.disabled=true;try{await prepareUpdate();const info=await ask(registration.active);if(info.windows>1)throw Error('Close other Report Studio tabs and app windows, then try updating again.');note('Applying update…');registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});}catch(error){applying=false;update.disabled=false;note(error.message);}};
+ window.addEventListener('online',()=>{connectivity();registration?.update().catch(()=>{});});window.addEventListener('offline',connectivity);
+ installation();connectivity();
+ if(navigator.getInstalledRelatedApps)try{const related=await navigator.getInstalledRelatedApps();detected=related.some(app=>app.platform==='webapp'&&new URL(app.url,location.href).origin===location.origin);installation();}catch{}
+ if(!('serviceWorker' in navigator)||!isSecureContext){status.textContent='Offline installation is unavailable in this browser. Use a supported browser over HTTPS.';return;}
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(applying){location.reload();return;}readiness();pending();});
+ try{registration=await navigator.serviceWorker.getRegistration('./');if(!registration)registration=await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});pending();await readiness();registration.addEventListener('updatefound',()=>{const worker=registration.installing;worker?.addEventListener('statechange',()=>{if(worker.state==='installed'){pending();readiness();}if(worker.state==='redundant'&&!ready)status.textContent='Offline setup did not complete. Reconnect and reopen the app to try again.';});});navigator.serviceWorker.ready.then(()=>readiness());if(navigator.onLine)registration.update().catch(()=>{});}
+ catch{status.textContent='Offline setup is unavailable here. Try opening the site in a full browser while online.';}
+}
