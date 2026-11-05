@@ -1,0 +1,15 @@
+import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+const base='/safety-fieldbook-report-studio/';
+execFileSync(process.execPath,['scripts/build.mjs'],{stdio:'inherit'});
+const manifest=JSON.parse(readFileSync('dist/manifest.webmanifest','utf8'));
+manifest.id=manifest.start_url=manifest.scope=base;
+manifest.related_applications=[{platform:'webapp',url:base+'manifest.webmanifest'}];
+mkdirSync('pages-site',{recursive:true});
+cpSync('dist','pages-site',{recursive:true,filter:source=>!source.includes('/server')&&!source.includes('\\server')&&!source.includes('/.openai')&&!source.includes('\\.openai')});
+writeFileSync('pages-site/manifest.webmanifest',JSON.stringify(manifest));
+let sw=readFileSync('dist/sw.js','utf8');
+sw=sw.replace(/const ASSETS=(.*);/,(_,json)=>'const ASSETS='+JSON.stringify(JSON.parse(json).map(p=>base+p.slice(1)))+';');
+sw=sw.replace("const CACHE_NAME='sfbr-shell-","const CACHE_NAME='sfbr-pages-shell-").replace("name.startsWith('sfbr-shell-')","name.startsWith('sfbr-pages-shell-')");
+writeFileSync('pages-site/sw.js',sw);
+writeFileSync('pages-site/.nojekyll','');
