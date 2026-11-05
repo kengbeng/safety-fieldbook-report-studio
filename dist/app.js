@@ -218,3 +218,6 @@ $('photoFiles').onchange=async e=>{
 
 document.addEventListener('click',e=>{if(!e.target.closest('#findingFilters'))$('findingFilters').open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('findingFilters').open=false;});
+
+$("openUserHelp").onclick=()=>$("userHelpDialog").showModal();
+$("closeUserHelp").onclick=()=>$("userHelpDialog").close();
