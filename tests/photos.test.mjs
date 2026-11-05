@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {imageMime,addedPhoto,removePhoto,restorePhotos} from '../dist/photos.mjs';
+import {packProject,unpackProject,projectSummary} from '../dist/projects.mjs';
+import {makeReport,sourceRows} from '../dist/report-model.mjs';
+import {counts} from '../dist/core.mjs';
+const JSZip=createRequire(import.meta.url)('../dist/vendor/jszip.min.js');
+const blob=new Blob([new Uint8Array([255,216,255,217])],{type:'image/jpeg'});
+const photo=()=>addedPhoto({name:'Extra evidence.jpg'},blob,[],'blob:test','added-id');
+function fixture(){const inspection={id:'i',title:'Inspection',date:'2026-10-22',inspector:'Inspector'},original={id:'f',reference:'F001',photos:[]};return {rows:[{key:'i|f',inspection,original,edit:{description:'Original observation',building:'S13',floor:'02',room:'13C',category:'',priority:'',action:'',remarks:''},include:true,photos:[photo()],sources:['inspection.zip'],signature:'original-source'}],groups:[inspection],conflicts:[],imports:[],bytes:0,expanded:4,groupEdits:{},fields:{title:'Report',department:'',reference:'',purpose:'',summary:'',preparedDate:'2026-11-04'}};}
+test('photo type is detected from bytes rather than the extension',()=>{assert.equal(imageMime(new Uint8Array([255,216,255,217])),'image/jpeg');assert.equal(imageMime(new Uint8Array([137,80,78,71])),'image/png');assert.equal(imageMime(new Uint8Array([1,2,3])),null);});
+test('added photos have unique report references and explicit provenance',()=>{const first=photo(),next=addedPhoto({name:'Second.jpg'},blob,[first],'blob:second','second-id');assert.equal(first.reference,'Added 01');assert.equal(next.reference,'Added 02');assert.equal(next.addedInReport,true);assert.equal(next.source.originalName,'Second.jpg');});
+test('removal and restore preserve the previous inclusion, caption and rotation',()=>{const p=photo();p.caption='Evidence';p.rotation=90;p.include=false;removePhoto(p);removePhoto(p);assert.equal(p.removed,true);restorePhotos([p]);assert.equal(p.include,false);assert.equal(p.caption,'Evidence');assert.equal(p.rotation,90);p.include=true;removePhoto(p);restorePhotos([p]);assert.equal(p.include,true);});
+test('removed photos cannot enter export or counts even if a stale inclusion is true',()=>{const s=fixture(),p=s.rows[0].photos[0];p.removed=true;p.include=true;assert.equal(counts(s.rows).photos,0);assert.equal(projectSummary(s).photoCount,0);assert.equal(makeReport({...s,title:'Report'}).photoCount,0);});
+test('backup round trip preserves added and removed photos without modifying imported records',async()=>{const s=fixture(),p=s.rows[0].photos[0];p.caption='New evidence';p.rotation=270;removePhoto(p);const restored=await unpackProject(new Uint8Array(await (await packProject(s,JSZip)).arrayBuffer()),JSZip),r=restored.rows[0];assert.equal(r.original.photos.length,0);assert.equal(r.photos[0].removed,true);assert.equal(r.photos[0].variants.original.blob.size,4);assert.equal(r.photos[0].caption,'New evidence');restorePhotos(r.photos);const m=makeReport({...restored,title:'Report',groups:[r.inspection]});assert.equal(m.photoCount,1);assert.match(m.findings[0].photos[0].captionText,/added to report/);assert.match(sourceRows(m)[0][2],/Extra evidence.jpg/);});

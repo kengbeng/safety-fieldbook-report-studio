@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {validate,safePath,fingerprint,counts,parseCSV} from '../dist/core.mjs';
+const fixture=()=>({schemaVersion:3,id:'inspection',title:'Inspection',date:'2026-10-22',inspector:'Inspector',findings:[{id:'finding',description:'Possibly in use',building:'S13',floor:'02',room:'13A',reference:'F001',folder:'findings/F001',photos:[]}]});
+test('location strings retain leading zeroes',()=>assert.equal(validate(fixture()).findings[0].floor,'02'));
+test('unsupported schema and duplicate IDs are rejected',()=>{const d=fixture();d.schemaVersion=2;assert.throws(()=>validate(d));d.schemaVersion=3;d.findings.push(d.findings[0]);assert.throws(()=>validate(d));});
+test('media path cannot escape archive root',()=>{for(const p of ['../x','/x','a/../../x','C:/x','a\\x','a//x'])assert.throws(()=>safePath(p));assert.equal(safePath('findings/F001/P01.jpg'),'findings/F001/P01.jpg');});
+test('display references and folder changes do not change identity fingerprint',()=>{const f=fixture().findings[0],other={...f,reference:'F008',folder:'findings/F008'};assert.equal(fingerprint(f,[]),fingerprint(other,[]));});
+test('source wording and media changes produce different fingerprints',()=>{const f=fixture().findings[0];assert.notEqual(fingerprint(f,[]),fingerprint({...f,description:'Confirmed in use'},[]));assert.notEqual(fingerprint(f,['a']),fingerprint(f,['b']));});
+test('statistics count logical photos and included findings',()=>{const inspection={id:'i'};const rows=[{include:true,inspection,photos:[{include:true},{include:false}]},{include:false,inspection,photos:[{include:true}]}];assert.deepEqual(counts(rows),{findings:1,photos:1,withPhotos:1,inspections:1});});
+test('CSV supports quoted commas, escaped quotes, multiline text and blank CR lines',()=>assert.deepEqual(parseCSV('\uFEFF"id","description"\r\r\n"1","a, b"\r\r\n"2","a ""quote""\nnext"'),[['id','description'],['1','a, b'],['2','a "quote"\nnext']]));
