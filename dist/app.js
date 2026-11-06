@@ -190,6 +190,7 @@ function loadProject(snapshot){selectedFindings.clear();selectingFindings=false;
  for(const row of state.rows)release(row);for(const c of state.conflicts)release(c.incoming);
  Object.assign(state,{rows:next.rows,imports:next.imports,conflicts:next.conflicts,bytes:next.bytes,expanded:next.expanded,groupEdits:next.groupEdits,openFindings:new Set()});
  for(const k of reportFields){if($(k).type==='checkbox')$(k).checked=k==='includeRecommendedAction'?next.fields[k]!==false:!!next.fields[k];else $(k).value=next.fields[k]??(k==='findingsLayout'?'individual':'');}lastFieldPreset=next.fields.reportFieldPreset||((reportPreset(migrateReportFields(next))==='followup')?'followup':'inspection');setReportFields(migrateReportFields(next));$('reportFieldOptions').open=false;$('search').value='';$('filter').value='';$('inclusionFilter').value='included';$('status').textContent='';render();
+ $('importLog').open=false;
 }
 const dashboardReady=startDashboard({capture:captureProject,load:loadProject,empty:emptyProject,busy:()=>state.busy||state.exporting,download:save});
 startPWA({prepareUpdate:async()=>{if(state.busy||state.exporting||findingDraft||document.querySelector('dialog[open]'))throw Error('Finish or cancel open edits and file processing before updating.');const dashboard=await dashboardReady;await dashboard.save();}});
