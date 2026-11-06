@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 · 6 Nov 2026
+
+- Fixed consolidated Word exports using portrait dimensions despite the landscape setting.
+- Added generated DOCX page-size regression checks for both report layouts.
+
 ## 1.1.0 · 6 Nov 2026
 
 - Fixed duplicate PDF finding headings at appendix page breaks and centred photo captions.
