@@ -1,3 +1,4 @@
+import {startStorageProtection} from './storage-protection.mjs';
 import {startPWA} from './pwa.js';
 import {startPhotoEditor} from './photo-editor.mjs';
 import {REPORT_FIELDS,REPORT_PRESETS,migrateReportFields,reportPreset} from './report-fields.mjs';
@@ -221,3 +222,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('findingFilters').
 
 $("openUserHelp").onclick=()=>$("userHelpDialog").showModal();
 $("closeUserHelp").onclick=()=>$("userHelpDialog").close();
+
+const storageProtectionControl=startStorageProtection({storage:navigator.storage,button:$("requestStorageProtection"),status:$("storageProtectionStatus")});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)storageProtectionControl.refresh();});
