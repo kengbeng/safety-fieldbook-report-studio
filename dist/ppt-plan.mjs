@@ -9,10 +9,11 @@ export function createPptPlan(data,measure=textMeasure()){
  const m=makeReport(data),slides=[];
  const lines=(text,w,size=17)=>wrapSlideText(text,w*96,s=>measure(s,size));
  const height=(text,w,size=17)=>Math.max(1,lines(text,w,size).length)*size*1.2/72+.17;
- const field=(label,text)=>({label,text:String(text??''),h:Math.max(height(label,LABEL_WIDTH),height(text,VALUE_WIDTH))});
+ const displayLabel=label=>label==='Recommended corrective action'?'Recommended action':label==='Department response / action taken'?'Department response':label;
+ const field=(label,text)=>({label,displayLabel:displayLabel(label),text:String(text??''),h:Math.max(height(displayLabel(label),LABEL_WIDTH),height(text,VALUE_WIDTH))});
  // Each section label stays in the same native table row as its text.
  function fieldPages(fields,capacity=MAX_HEIGHT){const pages=[];let page=[],used=0;
-  for(const [label,value] of fields){const all=lines(value,VALUE_WIDTH);let offset=0;while(offset<all.length){const continued=offset>0,name=label+(continued?' (continued)':''),labelHeight=height(name,LABEL_WIDTH),room=capacity-used;
+  for(const [label,value] of fields){const all=lines(value,VALUE_WIDTH);let offset=0;while(offset<all.length){const continued=offset>0,name=label+(continued?' (continued)':''),labelHeight=height(displayLabel(name),LABEL_WIDTH),room=capacity-used;
     const take=Math.min(all.length-offset,Math.floor((room-.17)/(17*1.2/72)));
     if(take<1||room<labelHeight){if(!page.length)throw Error('PowerPoint content cannot fit its table.');pages.push(page);page=[];used=0;continue;}
     const text=all.slice(offset,offset+take).join('\n'),row=field(name,text);page.push(row);used+=row.h;offset+=take;if(offset<all.length){pages.push(page);page=[];used=0;}
@@ -31,19 +32,21 @@ export function createPptPlan(data,measure=textMeasure()){
  while(offset<length){const capacity=Math.floor((MAX_HEIGHT-used-.2)/(fontSize*1.2/72));if(capacity<2){push();continue;}const take=Math.min(length-offset,capacity),cells=all.map((a,i)=>i===0&&offset>0?String(index+1):a.slice(offset,offset+take).join('\n')),h=Math.max(.85,take*fontSize*1.2/72+.2);if(used+h>MAX_HEIGHT){push();continue;}rows.push({cells,h});used+=h;offset+=take;if(offset<length)push();}}
  push();
  }else{
-let summaryRows=[];const table=summaryTable(m),summaryHeaders=['Finding',...table.headers.slice(1,-1).map(label=>label==='Finding'?'Finding summary':label),'Slide'],summaryWidths=table.weights.map(w=>WIDTH*w/table.weights.reduce((a,b)=>a+b,0)),summaryHeaderHeight=Math.max(.62,...summaryHeaders.map((label,i)=>height(label,summaryWidths[i]-.22,16)));let summaryHeight=summaryHeaderHeight;
- for(const f of m.findings){const cells=[f.ref,...table.rows[f.number-1].slice(1,-1),''],widths=summaryWidths;
+let summaryRows=[];const table=summaryTable(m),summaryHeaders=['No.',...table.headers.slice(1,-1).map(label=>label==='Finding'?'Finding summary':label),'Slide'],summaryWidths=summaryHeaders.map(label=>label==='No.'?.65:label==='Slide'?.85:label==='Location'?3.35:label==='Observed on'?1.55:label==='Category'?1.5:0),summaryHeaderHeight=(summaryWidths[summaryHeaders.indexOf('Finding summary')]=WIDTH-summaryWidths.reduce((n,w)=>n+w,0),Math.max(.62,...summaryHeaders.map((label,i)=>height(label,summaryWidths[i]-.22,16))));let summaryHeight=summaryHeaderHeight;
+ for(const f of m.findings){const cells=[String(f.number),...table.rows[f.number-1].slice(1,-1),''],widths=summaryWidths;
   // Full location remains in finding details; long summary locations wrap over continued rows.
   const all=cells.map((v,i)=>lines(v,widths[i]-.22,16)),length=Math.max(...all.map(a=>a.length));let offset=0;
   while(offset<length){const take=Math.min(length-offset,Math.floor((MAX_HEIGHT-summaryHeight-.16)/(16*1.2/72)));if(take<(offset>0?2:1)){summarySlides.push({kind:'summary',title:'Findings summary',headers:summaryHeaders,widths:summaryWidths,headerHeight:summaryHeaderHeight,rows:summaryRows});summaryRows=[];summaryHeight=summaryHeaderHeight;continue;}
-   const n=Math.min(take,length-offset),h=Math.max(n,offset>0?2:1)*16*1.2/72+.16;summaryRows.push({finding:f.ref,cells:all.map((a,i)=>i===0&&offset>0?f.ref+' (continued)':a.slice(offset,offset+n).join('\n')),h});summaryHeight+=h;offset+=n;
+   const n=Math.min(take,length-offset),h=Math.max(n,offset>0?2:1)*16*1.2/72+.16;summaryRows.push({finding:f.ref,cells:all.map((a,i)=>i===0&&offset>0?String(f.number)+' (cont.)':a.slice(offset,offset+n).join('\n')),h});summaryHeight+=h;offset+=n;
   }
  }
  if(summaryRows.length||!summarySlides.length)summarySlides.push({kind:'summary',title:'Findings summary',headers:summaryHeaders,widths:summaryWidths,headerHeight:summaryHeaderHeight,rows:summaryRows});slides.push(...summarySlides);
  }
- const photoBatchSize=data.pptSinglePhoto?1:2;
+ const photoBatchSize=data.pptSinglePhoto?1:2;let compactItems=[];
+ const flushCompact=()=>{if(!compactItems.length)return;const items=compactItems;compactItems=[];function emit(batch){const columns=batch.length>=3&&batch.every(item=>(item.photo.layoutAspectRatio||1)<.9)?batch.length:Math.min(2,batch.length),rows=Math.ceil(batch.length/columns),slot=WIDTH/columns,headingHeight=Math.max(...batch.map(item=>lines(item.finding.heading,slot-.35,16).length))*16*1.2/72+.06,locationHeight=m.selectedFields.includes('location')?Math.max(...batch.map(item=>lines(item.finding.location,slot-.35,12).length))*12*1.2/72+.04:0,captionHeight=Math.max(...batch.map(item=>lines(item.caption,slot-.35,12).length))*12*1.2/72+.12,headerHeight=headingHeight+locationHeight+.14;if(MAX_HEIGHT/rows-headerHeight-captionHeight-.22<1.5&&batch.length>2){emit(batch.slice(0,2));emit(batch.slice(2));return;}slides.push({kind:'photo-grid',title:'Photo appendix',items:batch,grid:{columns,headingHeight,locationHeight,headerHeight,captionHeight},rows:[]});}emit(items);};
  for(const f of m.findings){
   if(m.consolidated&&!f.photos.length)continue;
+  if(m.consolidated&&data.compactPhotoAppendix&&!data.pptSinglePhoto){const eligible=lines(f.heading,5.7,16).length<=2&&(!m.selectedFields.includes('location')||lines(f.location,5.7,12).length<=2)&&f.photos.every(p=>lines(p.captionText,5.7,12).length<=3);if(eligible){for(const photo of f.photos){compactItems.push({finding:f,photo,caption:photo.captionText});if(compactItems.length===4)flushCompact();}continue;}flushCompact();}
   const headText=f.heading,headHeight=height(headText,11.95,22),locationLines=lines(f.location,VALUE_WIDTH),compactLocation=locationLines.length<=2?f.location:locationLines.slice(0,2).join('\n')+'…';
   const fixed=[{label:headText,text:'',h:headHeight,heading:true},...(m.selectedFields.includes('location')?[field('Location',compactLocation)]:[])],fixedHeight=sum(fixed);
   const fields=findingFields(f).filter(([label])=>label!=='Location');if(m.selectedFields.includes('location')&&locationLines.length>2)fields.unshift(['Location details',f.location]);
@@ -52,10 +55,11 @@ let summaryRows=[];const table=summaryTable(m),summaryHeaders=['Finding',...tabl
    if(available<minHeight)return null;return {photos,h:Math.min(available,data.pptSinglePhoto?5:3.65),captionHeight,captions:captions.map(c=>c.slice(0,3).join('\n')),remainders:captions.map(c=>c.slice(3).join('\n'))};}
   let splitPage=null;
   if(!m.consolidated&&!data.pptSinglePhoto&&batches.length){const leftWidth=7,rightWidth=4.9,gap=.3,size=16,valueWidth=4.85,labelWidth=1.65;
-   const leftRows=[...(m.selectedFields.includes('location')?[['Location',f.location]]:[]),...fields].map(([label,value])=>({label,text:String(value),h:Math.max(height(label,labelWidth,size),height(value,valueWidth,size))+.04})),heading=fixed[0],photoHeight=MAX_HEIGHT-heading.h;
+   const leftRows=[...(m.selectedFields.includes('location')?[['Location',f.location]]:[]),...fields].map(([label,value])=>({label,displayLabel:displayLabel(label),text:String(value),h:Math.max(height(displayLabel(label),labelWidth,size),height(value,valueWidth,size))+.04})),heading=fixed[0],photoHeight=MAX_HEIGHT-heading.h;
    // Use a split slide only when all text fits at a readable size; otherwise keep the continuation layout.
-   if(heading.h+sum(leftRows)<=MAX_HEIGHT&&photoHeight>=3.6){const photos=batches.shift(),captions=photos.map(p=>lines(p.captionText,rightWidth-.3,14)),captionLines=Math.min(3,Math.max(...captions.map(c=>c.length))),captionHeight=captionLines*14*1.2/72+.12;
-    splitPage={kind:'finding',title:'Detailed finding',finding:f,rows:[heading,...leftRows],split:{leftWidth,rightWidth,gap,fontSize:size},photo:{photos,h:photoHeight,captionHeight,captions:captions.map(c=>c.slice(0,3).join('\n')),remainders:captions.map(c=>c.slice(3).join('\n'))}};findingSlides.push(splitPage);
+   if(heading.h+sum(leftRows)<=MAX_HEIGHT&&photoHeight>=3.6){const photos=batches.shift(),arrangement=photos.length===2&&photos.every(p=>(p.layoutAspectRatio||1)<.9)?'side-by-side':'stacked',captionWidth=arrangement==='side-by-side'?(rightWidth-.12)/2:rightWidth,captions=photos.map(p=>lines(p.captionText,captionWidth-.3,arrangement==='side-by-side'?12:14)),captionLines=Math.min(3,Math.max(...captions.map(c=>c.length))),captionHeight=captionLines*(arrangement==='side-by-side'?12:14)*1.2/72+.12;
+    const response=leftRows.find(r=>r.label==='Department response / action taken');if(response)response.h+=Math.max(0,photoHeight-sum(leftRows));
+    splitPage={kind:'finding',title:'Detailed finding',finding:f,rows:[heading,...leftRows],split:{leftWidth,rightWidth,gap,fontSize:size},photo:{photos,arrangement,captionFontSize:arrangement==='side-by-side'?12:14,h:photoHeight,captionHeight,captions:captions.map(c=>c.slice(0,3).join('\n')),remainders:captions.map(c=>c.slice(3).join('\n'))}};findingSlides.push(splitPage);
    }
   }
   if(!splitPage)for(const [index,rows] of pages.entries()){
@@ -67,8 +71,9 @@ let summaryRows=[];const table=summaryTable(m),summaryHeaders=['Finding',...tabl
   for(const photos of batches){const photo=photoRow(photos,MAX_HEIGHT-fixedHeight);if(!photo)throw Error('Finding title or location leaves insufficient space for photographs. Shorten the finding title.');findingSlides.push({kind:'finding',title:'Additional photographs',finding:f,rows:[...fixed],photo});}
   for(const page of findingSlides){slides.push(page);if(page.photo)for(let i=0;i<page.photo.photos.length;i++)if(page.photo.remainders[i]){const photo=page.photo.photos[i];for(const rows of fieldPages([[photo.reference+' · Caption (continued)',page.photo.remainders[i]]],MAX_HEIGHT-fixedHeight))slides.push({kind:'finding',title:'Photo caption continued',finding:f,rows:[...fixed,...rows]});}}
  }
+ flushCompact();
  if(data.pptSourceAppendix){section('Source appendix',sourceFiles(m).map(([ref,name])=>[ref+' · File',name]));for(const [i,row]of sourceRows(m).entries())section('Source appendix · '+m.findings[i].ref,[['Finding source',row[1]],['Photograph sources',row[2]||'No included photographs']]);}
- const refs=new Map();slides.forEach((s,i)=>{s.number=i+1;if(s.finding&&!refs.has(s.finding.ref))refs.set(s.finding.ref,i+1);});
+ const refs=new Map();slides.forEach((s,i)=>{s.number=i+1;if(s.finding&&!refs.has(s.finding.ref))refs.set(s.finding.ref,i+1);for(const item of s.items||[])if(!refs.has(item.finding.ref))refs.set(item.finding.ref,i+1);});
  summarySlides.forEach((s,i)=>{if(i)s.title+=' · continued '+(i+1);for(const r of s.rows)r.cells[r.cells.length-1]=String(refs.get(r.finding)||'');});
  return {model:m,slides,width:WIDTH,tableY:1.15,maxTableHeight:MAX_HEIGHT};
 }

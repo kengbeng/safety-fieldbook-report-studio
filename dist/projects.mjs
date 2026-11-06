@@ -11,7 +11,7 @@ export function stripURLs(snapshot){
 export function inspectSnapshot(s){
  if(!s||!Array.isArray(s.rows)||!Array.isArray(s.conflicts)||!Array.isArray(s.imports)||!s.fields||typeof s.fields!=='object')throw Error('Invalid project content.');
  for(const k of ['title','department','reference','purpose','summary','preparedDate'])if(typeof s.fields[k]!=='string')throw Error('Invalid report field: '+k);
- for(const k of ['coverPage','includeContents','pptSinglePhoto','pptSourceAppendix','departmentResponse','includeRecommendedAction'])if(s.fields[k]!==undefined&&typeof s.fields[k]!=='boolean')throw Error('Invalid layout option.');
+ for(const k of ['coverPage','includeContents','compactFindings','compactPhotoAppendix','pptSinglePhoto','pptSourceAppendix','departmentResponse','includeRecommendedAction'])if(s.fields[k]!==undefined&&typeof s.fields[k]!=='boolean')throw Error('Invalid layout option.');
  if(s.fields.reportFieldSelection!==undefined&&(!Array.isArray(s.fields.reportFieldSelection)||new Set(s.fields.reportFieldSelection).size!==s.fields.reportFieldSelection.length||s.fields.reportFieldSelection.some(key=>!REPORT_FIELDS.some(([known])=>known===key))))throw Error('Invalid report field selection.');
  if(s.fields.reportFieldPreset!==undefined&&!['inspection','followup'].includes(s.fields.reportFieldPreset))throw Error('Invalid report field preset.');
  if(s.fields.findingsLayout!==undefined&&!['individual','consolidated'].includes(s.fields.findingsLayout))throw Error('Invalid findings layout.');

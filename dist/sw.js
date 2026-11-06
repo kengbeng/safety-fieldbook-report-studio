@@ -1,5 +1,5 @@
-const CACHE_NAME='sfbr-shell-a990e8959f7d8320';
-const ASSETS=["/","/ai.js","/app-icon.svg","/app.js","/core.mjs","/dashboard.js","/features.mjs","/findings-ops.mjs","/icons/app-192.png","/icons/app-512.png","/icons/app-maskable-512.png","/index.html","/manifest.webmanifest","/photo-editor.mjs","/photos.mjs","/ppt-export.js","/ppt-plan.mjs","/projects.mjs","/pwa.js","/report-export.js","/report-fields.mjs","/report-library.mjs","/report-model.mjs","/style.css","/vendor/docx.js","/vendor/jspdf.js","/vendor/jszip.min.js","/vendor/pptxgen.LICENSE.txt","/vendor/pptxgen.min.js","/workflow.mjs"];
+const CACHE_NAME='sfbr-shell-b8703769e526c00e';
+const ASSETS=["/","/ai.js","/app-icon.svg","/app.js","/core.mjs","/dashboard.js","/features.mjs","/findings-ops.mjs","/icons/app-192.png","/icons/app-512.png","/icons/app-maskable-512.png","/index.html","/manifest.webmanifest","/photo-editor.mjs","/photos.mjs","/ppt-export.js","/ppt-plan.mjs","/projects.mjs","/pwa.js","/report-export.js","/report-fields.mjs","/report-library.mjs","/report-model.mjs","/storage-protection.mjs","/style.css","/vendor/docx.js","/vendor/jspdf.js","/vendor/jszip.min.js","/vendor/pptxgen.LICENSE.txt","/vendor/pptxgen.min.js","/workflow.mjs"];
 const PATHS=new Set(ASSETS);
 function validAsset(response,path){
  if(!response.ok||response.redirected||!['basic','default'].includes(response.type))return false;
