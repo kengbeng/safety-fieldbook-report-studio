@@ -46,7 +46,7 @@ export function readProjects(db){return new Promise((resolve,reject)=>{const tx=
 export function readProject(db,id){return new Promise((resolve,reject)=>{const req=db.transaction('projects','readonly').objectStore('projects').get(id);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
 export function writeProject(db,project,expectedRevision){return new Promise((resolve,reject)=>{
  const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),request=store.get(project.id);let conflict=false;
- request.onsuccess=()=>{const previous=request.result;if((previous?.revision||0)!==expectedRevision){conflict=true;tx.abort();return;}store.put({...project,revision:expectedRevision+1});};
+ request.onsuccess=()=>{const previous=request.result;if(previous?.deletedAt||(previous?.revision||0)!==expectedRevision){conflict=true;tx.abort();return;}store.put({...project,revision:expectedRevision+1});};
  tx.oncomplete=()=>resolve(expectedRevision+1);tx.onerror=()=>reject(tx.error||Error('Unable to save on this device.'));tx.onabort=()=>reject(conflict?Error('This report changed in another tab. Download a backup of your edits, then reopen the saved report.'):tx.error||Error('Unable to save on this device.'));
  });}
 export async function packProject(snapshot,JSZip){
@@ -62,3 +62,17 @@ export async function unpackProject(file,JSZip){
  for(const row of [...snapshot.rows,...snapshot.conflicts.map(c=>c.incoming)])for(const p of row.photos)for(const v of Object.values(p.variants))if(v){if(typeof v.file!=='string'||!/^media\/\d+\.(jpg|png)$/.test(v.file))throw Error('Invalid project image reference.');const image=zip.file(v.file);if(!image)throw Error('Missing project image: '+v.file);const bytes=await image.async('uint8array');const jpeg=bytes[0]===255&&bytes[1]===216,png=bytes[0]===137&&bytes[1]===80&&bytes[2]===78&&bytes[3]===71;if((v.mime==='image/jpeg'&&!jpeg)||(v.mime==='image/png'&&!png))throw Error('Invalid image data in backup.');v.blob=new Blob([bytes],{type:v.mime});delete v.file;}
  return snapshot;
 }
+
+export function projectDeletion(record,expectedRevision,deleted,now=new Date().toISOString()){
+ if(!record)throw Error('This report is no longer available.');
+ if(record.revision!==expectedRevision)throw Error('This report changed in another tab. Refresh the report list and try again.');
+ if(!!record.deletedAt===deleted)throw Error(deleted?'This report is already deleted.':'This report has already been restored.');
+ const next={...record,revision:record.revision+1};
+ if(deleted)next.deletedAt=now;else delete next.deletedAt;
+ return next;
+}
+export function setProjectDeleted(db,id,revision,deleted){return new Promise((resolve,reject)=>{
+ const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),request=store.get(id);let result,failure;
+ request.onsuccess=()=>{try{result=projectDeletion(request.result,revision,deleted);store.put(result);}catch(e){failure=e;tx.abort();}};
+ tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(failure||tx.error||Error('Unable to update this report.'));tx.onabort=()=>reject(failure||tx.error||Error('Unable to update this report.'));
+});}
