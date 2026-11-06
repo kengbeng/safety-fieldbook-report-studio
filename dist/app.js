@@ -225,3 +225,5 @@ $("closeUserHelp").onclick=()=>$("userHelpDialog").close();
 
 const storageProtectionControl=startStorageProtection({storage:navigator.storage,button:$("requestStorageProtection"),status:$("storageProtectionStatus")});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)storageProtectionControl.refresh();});
+
+$("openReportAbout").onclick=()=>{$("userHelpDialog").showModal();$("reportAbout").focus({preventScroll:true});$("reportAbout").scrollIntoView({block:"start"});};
