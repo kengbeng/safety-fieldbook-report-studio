@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 · 6 Nov 2026
+
+- Keep Imported inspections collapsed whenever a saved report or project backup is opened. New import issues can still expand the panel for review.
+
 ## 1.1.1 · 6 Nov 2026
 
 - Fixed consolidated Word exports using portrait dimensions despite the landscape setting.
