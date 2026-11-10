@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3 · 10 Nov 2026
+
+- Refined finding cards with compact headers, aligned two-line titles and paired photo previews.
+- Moved photo counts to the footer and show recommendation status only when added.
+
 ## 1.1.2 · 6 Nov 2026
 
 - Keep Imported inspections collapsed whenever a saved report or project backup is opened. New import issues can still expand the panel for review.
