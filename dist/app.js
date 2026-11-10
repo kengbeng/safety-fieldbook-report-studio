@@ -104,8 +104,13 @@ function renderFindingView(){
  const host=$('findings');host.dataset.view=findingsView;
  for(const control of document.querySelectorAll('[data-finding-view]'))control.setAttribute('aria-pressed',String(control.dataset.findingView===findingsView));
  $('findingViewHint').textContent={cards:'Photo cards',table:'Compare full observations and recommended actions',list:'Quick navigation and reordering'}[findingsView];
- if(findingsView==='cards')return;
  const cards=[...host.querySelectorAll('article[data-row]')];if(!cards.length)return;
+ for(const card of cards){
+  const selection=card.querySelector('.merge-selection');
+  if(selection){const input=selection.querySelector('input');input.setAttribute('aria-label','Select '+card.querySelector('.grip-order').textContent);selection.title=input.getAttribute('aria-label');selection.replaceChildren(input);}
+  const icon=card.querySelector('.reorder-menu>summary');icon.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
+ }
+ if(findingsView==='cards'){for(const card of cards)prepareViewMenu(card,state.rows[+card.dataset.row]);return;}
  if(findingsView==='list'){
   for(const card of cards){const row=state.rows[+card.dataset.row],menu=prepareViewMenu(card,row),actions=card.querySelector('.card-actions');card.querySelector('.edit-finding')?.remove();actions.append(menu);}
   return;
@@ -116,9 +121,9 @@ function renderFindingView(){
  for(const card of cards){
   const i=+card.dataset.row,row=state.rows[i],tr=document.createElement('tr');tr.dataset.row=i;if(!row.include)tr.className='excluded';
   const cell=()=>{const td=document.createElement('td');tr.append(td);return td;};
-  const order=cell();order.className='table-order';const selection=card.querySelector('.merge-selection');if(selection)order.append(selection);
+  const order=cell();order.className='table-order';const orderControls=document.createElement('div');orderControls.className='table-order-controls';order.append(orderControls);const selection=card.querySelector('.merge-selection');if(selection)orderControls.append(selection);
   const number=document.createElement('span');number.className='table-finding-number';number.textContent=row.include?String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'Deleted';
-  const grip=card.querySelector('.drag-finding');grip.querySelector('.grip-order').textContent=number.textContent;order.append(grip);
+  const grip=card.querySelector('.drag-finding');grip.querySelector('.grip-order').textContent=number.textContent;orderControls.append(grip);
   grip.ondragstart=e=>{draggedFindingKey=row.key;tr.classList.add('is-dragging');e.dataTransfer.setData('text/plain',row.key);e.dataTransfer.effectAllowed='move';};
   grip.ondragend=()=>{draggedFindingKey=null;for(const item of host.querySelectorAll('tr'))item.classList.remove('is-dragging','table-drop-before','table-drop-after');};
   tr.ondragover=e=>{if(draggedFindingKey&&draggedFindingKey!==row.key){e.preventDefault();e.dataTransfer.dropEffect='move';for(const item of host.querySelectorAll('tr'))item.classList.remove('table-drop-before','table-drop-after');tr.classList.add(state.rows.findIndex(r=>r.key===draggedFindingKey)<i?'table-drop-after':'table-drop-before');}};
