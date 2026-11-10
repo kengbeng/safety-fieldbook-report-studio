@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4 - 10 Nov 2026
+
+- Sized the table Actions column to its compact controls, aligned them right and returned spare width to report text.
+- Retained the accessible Actions header while hiding its visual label; touch controls retain sufficient space.
+
 ## 1.2.3 - 10 Nov 2026
 
 - Matched edit and options controls to the compact view selector, with consistent table action grouping.
