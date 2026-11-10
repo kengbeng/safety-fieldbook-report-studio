@@ -116,7 +116,7 @@ function renderFindingView(){
   return;
  }
  const wrap=document.createElement('div');wrap.className='finding-table-scroll';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','Findings comparison table, scroll horizontally for more columns');
- const table=document.createElement('table');table.className='finding-table';table.innerHTML='<caption class="sr-only">Full findings in report order. Open a finding to edit.</caption><thead><tr><th scope="col">No.</th><th scope="col">Observation</th><th scope="col">Location</th><th scope="col">Photos</th><th scope="col">Recommended action</th><th scope="col">Actions</th></tr></thead>';
+ const table=document.createElement('table');table.className='finding-table';table.innerHTML='<caption class="sr-only">Full findings in report order. Open a finding to edit.</caption><thead><tr><th scope="col">No.</th><th scope="col">Observation</th><th scope="col">Location</th><th scope="col">Photos</th><th scope="col">Recommended action</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>';
  const tbody=document.createElement('tbody');
  for(const card of cards){
   const i=+card.dataset.row,row=state.rows[i],tr=document.createElement('tr');tr.dataset.row=i;if(!row.include)tr.className='excluded';
