@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.5 - 10 Nov 2026
+
+- Matched saved-report options icons to the compact findings controls.
+- Removed underlines from the report options trigger and Delete report command.
+- Retained Edit report as the labelled primary action.
+
 ## 1.2.4 - 10 Nov 2026
 
 - Sized the table Actions column to its compact controls, aligned them right and returned spare width to report text.
