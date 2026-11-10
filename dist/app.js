@@ -117,7 +117,13 @@ function renderFindingView(){
   const i=+card.dataset.row,row=state.rows[i],tr=document.createElement('tr');tr.dataset.row=i;if(!row.include)tr.className='excluded';
   const cell=()=>{const td=document.createElement('td');tr.append(td);return td;};
   const order=cell();order.className='table-order';const selection=card.querySelector('.merge-selection');if(selection)order.append(selection);
-  const number=document.createElement('span');number.className='table-finding-number';number.textContent=row.include?String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'Deleted';order.append(number);
+  const number=document.createElement('span');number.className='table-finding-number';number.textContent=row.include?String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'Deleted';
+  const grip=card.querySelector('.drag-finding');grip.querySelector('.grip-order').textContent=number.textContent;order.append(grip);
+  grip.ondragstart=e=>{draggedFindingKey=row.key;tr.classList.add('is-dragging');e.dataTransfer.setData('text/plain',row.key);e.dataTransfer.effectAllowed='move';};
+  grip.ondragend=()=>{draggedFindingKey=null;for(const item of host.querySelectorAll('tr'))item.classList.remove('is-dragging','table-drop-before','table-drop-after');};
+  tr.ondragover=e=>{if(draggedFindingKey&&draggedFindingKey!==row.key){e.preventDefault();e.dataTransfer.dropEffect='move';for(const item of host.querySelectorAll('tr'))item.classList.remove('table-drop-before','table-drop-after');tr.classList.add(state.rows.findIndex(r=>r.key===draggedFindingKey)<i?'table-drop-after':'table-drop-before');}};
+  tr.ondragleave=e=>{if(!tr.contains(e.relatedTarget))tr.classList.remove('table-drop-before','table-drop-after');};
+  tr.ondrop=e=>card.ondrop(e);
   const observation=cell(),edit=document.createElement('button');edit.type='button';edit.className='table-finding-title';edit.dataset.editFinding='1';edit.textContent=row.edit.shortTitle?.trim()||row.edit.description?.trim()||'Observation not entered';edit.setAttribute('aria-label','Edit '+(row.include?'Finding '+number.textContent:'deleted finding')+' - '+shortFindingTitle(row));observation.append(edit);
   if(row.edit.shortTitle?.trim()){const evidence=document.createElement('p');evidence.className='table-observation';evidence.textContent=row.edit.description||'Observation not entered';observation.append(evidence);}
   cell().textContent=reportLocation(row);cell().textContent=card.querySelector('.card-photo-count').textContent;
