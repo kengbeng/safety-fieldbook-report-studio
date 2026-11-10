@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeReport,summaryRows,sourceRows,sourceFiles,findingFields,shortFindingTitle,consolidatedTable} from '../dist/report-model.mjs';
-function fixture(){const inspection={id:'inspection-id',title:'Lab inspection',date:'2026-10-22',inspector:'Inspector'};return{title:'Inspection report',preparedDate:'2026-11-04',groups:[inspection],rows:[{inspection,original:{id:'finding-id',reference:'F002'},edit:{description:'Possibly in use. The measured clearance was 72 cm.',building:'S13',floor:'02',room:'13C',category:'',priority:'',action:'',remarks:''},photos:[{id:'photo-id',reference:'P01',include:true,variant:'original',rotation:90,caption:'Measured clearance',variants:{original:{mime:'image/jpeg'}}}],sources:['source.zip']}]};}
+import {reportFixture} from './report-fixture.mjs';
+const fixture=()=>reportFixture({photos:[{id:'photo-id',reference:'P01',include:true,variant:'original',rotation:90,caption:'Measured clearance',variants:{original:{mime:'image/jpeg'}}}]});
 test('summary omits category column when every category is empty',()=>{const m=makeReport(fixture());assert.equal(m.hasCategories,false);assert.equal(summaryRows(m)[0].length,4);});
 test('source display references are separate from report numbering',()=>{const m=makeReport(fixture());assert.equal(m.findings[0].number,1);assert.equal(summaryRows(m)[0][1],'S13 · Level 02 · Room 13C');assert.ok(!summaryRows(m)[0].join(' ').includes('I01 / F002'));assert.ok(sourceRows(m)[0][1].includes('finding-id'));});
 test('observation and uncertainty remain unchanged in detailed fields',()=>{const data=fixture(),original=data.rows[0].edit.description,m=makeReport(data);assert.equal(findingFields(m.findings[0]).find(([k])=>k==='Observation')[1],original);assert.equal(data.rows[0].edit.description,original);});
@@ -17,8 +18,20 @@ test('blank short title produces number-only heading while summary retains obser
 
 test('consolidated columns retain full evidence and keep blank department response separate from recommendations',()=>{const data=fixture();data.findingsLayout='consolidated';data.departmentResponse=true;data.rows[0].edit.action='Review route';const m=makeReport(data),t=consolidatedTable(m);assert.equal(m.consolidated,true);assert.equal(t.headers.at(-1),'Department response / action taken');assert.equal(t.rows[0].at(-1),'');assert.equal(t.rows[0][t.headers.indexOf('Recommended corrective action')],'Review route');assert.match(t.rows[0][t.headers.indexOf('Observation')],/72 cm/);assert.ok(!t.headers.includes('Priority'));assert.match(t.rows[0][t.headers.indexOf('Photos')],/Finding 01/);assert.ok(findingFields(m.findings[0]).some(([label,value])=>label==='Department response / action taken'&&value.trim()===''));});
 
-test('recommended action export toggle defaults on and hides action without changing source wording or response space',()=>{const data=fixture();data.rows[0].edit.action='Original proposed action';data.departmentResponse=true;let m=makeReport(data);assert.ok(findingFields(m.findings[0]).some(([k])=>k==='Recommended corrective action'));data.includeRecommendedAction=false;m=makeReport(data);assert.ok(!findingFields(m.findings[0]).some(([k])=>k==='Recommended corrective action'));assert.ok(!consolidatedTable(m).headers.includes('Recommended corrective action'));assert.ok(consolidatedTable(m).headers.includes('Department response / action taken'));assert.equal(data.rows[0].edit.action,'Original proposed action');});
-
-test('enabled corrective action creates an empty row when no wording exists',()=>{const data=fixture();data.includeRecommendedAction=true;let m=makeReport(data),field=findingFields(m.findings[0]).find(([k])=>k==='Recommended corrective action');assert.ok(field);assert.equal(field[1].trim(),'');data.includeRecommendedAction=false;m=makeReport(data);assert.ok(!findingFields(m.findings[0]).some(([k])=>k==='Recommended corrective action'));assert.equal(data.rows[0].edit.action,'');});
+test('recommended action toggle preserves populated or blank wording and response cells',()=>{
+ for(const action of ['Original proposed action','']){
+  const data=fixture();data.rows[0].edit.action=action;data.departmentResponse=true;
+  for(const enabled of [undefined,true,false]){
+   data.includeRecommendedAction=enabled;
+   const model=makeReport(data),fields=findingFields(model.findings[0]),field=fields.find(([label])=>label==='Recommended corrective action'),table=consolidatedTable(model);
+   assert.equal(!!field,enabled!==false);
+   assert.equal(table.headers.includes('Recommended corrective action'),enabled!==false);
+   if(field)assert.equal(field[1].trim(),action);
+   assert.ok(fields.some(([label,value])=>label==='Department response / action taken'&&value.trim()===''));
+   assert.ok(table.headers.includes('Department response / action taken'));
+   assert.equal(data.rows[0].edit.action,action);
+  }
+ }
+});
 
 test('report-level inspector names override imported names without changing source groups',()=>{const groups=[{id:'one',inspector:'Original inspector'}],base={groups,rows:[]};const model=makeReport({...base,inspectors:'Report inspector'});assert.equal(model.inspectors,'Report inspector');assert.equal(model.groups[0].inspector,'Original inspector');assert.equal(makeReport(base).inspectors,'Original inspector');assert.equal(makeReport({...base,inspectors:''}).inspectors,'');});
