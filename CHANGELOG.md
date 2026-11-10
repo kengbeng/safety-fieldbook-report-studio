@@ -1,5 +1,13 @@
 # Changelog
 
+## Test maintenance · 10 Nov 2026
+
+- Split routine (84) and parked AI (10) checks; keep a combined 94-check command.
+- Consolidated repeated corrective-action scenarios without dropping blank or populated cases.
+- Shared report fixture setup and documented test ownership and visual review boundaries.
+- Pages CI selects AI tests for relevant changes or runs all checks when history is unavailable.
+- Application version remains 1.1.3; no runtime behaviour changed.
+
 ## 1.1.3 Â· 10 Nov 2026
 
 - Refined finding cards with compact headers, aligned two-line titles and paired photo previews.

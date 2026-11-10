@@ -7,6 +7,9 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test --test-isolation=none"
+    "test": "node tests/run.mjs",
+    "test:ai": "node tests/run.mjs ai",
+    "test:all": "node tests/run.mjs all",
+    "test:ci": "node tests/run.mjs ci"
   }
 }
