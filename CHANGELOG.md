@@ -1,12 +1,18 @@
 # Changelog
 
+## 1.2.1 - 10 Nov 2026
+
+- Table compares full observations and actions with compact numbering and edit/options at the right.
+- List focuses on quick navigation: grip, number, thumbnail, title/location, photo count and one options menu.
+- Delete/restore and reorder choices use top-layer overlays without expanding rows or clipping inside the table.
+
 ## 1.2.0 - 10 Nov 2026
 
 - Added Cards, Table and compact List views for findings, with a remembered browser preference.
 - All views share search, filters, editing, deletion/restoration, selection and report order.
 - Table view includes observations, locations, photo counts and recommended actions; narrow screens can scroll horizontally.
 
-## Test maintenance · 10 Nov 2026
+## Test maintenance  -  10 Nov 2026
 
 - Split routine (84) and parked AI (10) checks; keep a combined 94-check command.
 - Consolidated repeated corrective-action scenarios without dropping blank or populated cases.
