@@ -1,3 +1,9 @@
+# Version 1.2.6 — 10 Nov 2026
+
+- Replaced the home storage panel with a compact storage information dialog and footer offline status.
+- Added dismiss controls to operation messages.
+- Guarded app updates against missing service workers during offline setup.
+
 # Changelog
 
 ## 1.2.5 - 10 Nov 2026
