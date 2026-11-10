@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 - 10 Nov 2026
+
+- Matched edit and options controls to the compact view selector, with consistent table action grouping.
+- Moved card delete/restore commands into the options overlay.
+- Aligned selection checkboxes inline with row numbering and grips in List and Table views, preserving accessible labels.
+
 ## 1.2.2 - 10 Nov 2026
 
 - Restored numbered drag grips in the comparison table, with row drop indicators and keyboard reorder alternatives.
