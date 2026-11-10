@@ -1,3 +1,4 @@
+import {startStatusMessages} from './status-messages.mjs';
 import {startStorageProtection} from './storage-protection.mjs';
 import {startPWA} from './pwa.js';
 import {startPhotoEditor} from './photo-editor.mjs';
@@ -255,6 +256,9 @@ function loadProject(snapshot){selectedFindings.clear();selectingFindings=false;
  $('importLog').open=false;
 }
 const dashboardReady=startDashboard({capture:captureProject,load:loadProject,empty:emptyProject,busy:()=>state.busy||state.exporting,download:save});
+startStatusMessages();
+document.getElementById('openStorageInfo').onclick=()=>document.getElementById('storageInfoDialog').showModal();
+document.getElementById('closeStorageInfo').onclick=()=>document.getElementById('storageInfoDialog').close();
 startPWA({prepareUpdate:async()=>{if(state.busy||state.exporting||findingDraft||document.querySelector('dialog[open]'))throw Error('Finish or cancel open edits and file processing before updating.');const dashboard=await dashboardReady;await dashboard.save();}});
 
 const aiSnapshot=()=>JSON.stringify(reportData(),(k,v)=>['photos','original','sources','signature'].includes(k)?undefined:v);
