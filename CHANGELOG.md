@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 - 10 Nov 2026
+
+- Restored numbered drag grips in the comparison table, with row drop indicators and keyboard reorder alternatives.
+- Reordered the view selector to Cards, List, Table, reduced its visual size and aligned it right.
+
 ## 1.2.1 - 10 Nov 2026
 
 - Table compares full observations and actions with compact numbering and edit/options at the right.
