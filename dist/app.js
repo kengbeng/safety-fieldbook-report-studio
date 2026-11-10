@@ -16,6 +16,7 @@ import {LIMITS,checkArchiveSize,checkExpandedSize,safePath,validate,keyFor,finge
 let lastFieldPreset='inspection';let draggedFindingKey=null;let positionFindingKey=null;let findingDraft=null;let selectingFindings=false;const selectedFindings=new Set();
 const photoEditor=startPhotoEditor((photo,blob,base,baseRotation)=>{const previous=photo.variants.report,expanded=state.expanded+blob.size-(previous?.blob.size||0);if(expanded>LIMITS.expanded)throw Error('This report has reached the 1 GB expanded file limit.');const originalUrl=findingDraft?.original.photos.find(p=>p.id===photo.id)?.variants.report?.url;if(previous?.url&&previous.url!==originalUrl)URL.revokeObjectURL(previous.url);state.expanded=expanded;photo.variants.report={blob,mime:blob.type,url:URL.createObjectURL(blob)};photo.editBaseVariant=base;photo.editBaseRotation=baseRotation;photo.variant='report';photo.rotation=0;photo.reportEditRevision=(photo.reportEditRevision||0)+1;render();});
 let ai;let projectGeneration=0;let photoTarget=null;
+let findingsView='cards';try{const saved=localStorage.getItem('sfbr-findings-view');if(['cards','table','list'].includes(saved))findingsView=saved;}catch{}
 const $=id=>document.getElementById(id), state={rows:[],imports:[],conflicts:[],bytes:0,expanded:0,busy:false,exporting:false,groupEdits:{},openFindings:new Set()};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID();
@@ -78,9 +79,35 @@ function render(){
  $('previewHint').hidden=!!c.findings&&!state.conflicts.length&&!state.busy;$('previewHint').textContent=state.busy?'Wait for file processing to finish.':state.conflicts.length?'Resolve conflicting versions below to continue.':!state.rows.length?'Import a ZIP or add a finding to begin.':!c.findings?'Include at least one finding to continue.':'Check the report before downloading.';
  $('expandAll').textContent=rows.length&&rows.every(r=>state.openFindings.has(r.key))?'Collapse shown findings':'Expand shown findings';$('expandAll').disabled=!rows.length;$('reportCheck').hidden=!state.rows.length;if(state.rows.length)showCheck($('reportCheck'),reportData());
  decorateFindingCards();
+ renderFindingView();
  document.dispatchEvent(new Event('report-changed'));
  for(const editor of $('findings').querySelectorAll('[data-expand]'))editor.ontoggle=()=>{const key=state.rows[+editor.dataset.expand]?.key;if(key){if(editor.open)state.openFindings.add(key);else state.openFindings.delete(key);}};
 }
+function renderFindingView(){
+ const host=$('findings');host.dataset.view=findingsView;
+ for(const control of document.querySelectorAll('[data-finding-view]'))control.setAttribute('aria-pressed',String(control.dataset.findingView===findingsView));
+ $('findingViewHint').textContent={cards:'Photo cards',table:'Compare findings - scroll sideways on small screens',list:'Compact overview'}[findingsView];
+ if(findingsView!=='table')return;
+ const cards=[...host.querySelectorAll('article[data-row]')];if(!cards.length)return;
+ const wrap=document.createElement('div');wrap.className='finding-table-scroll';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','Findings table, scroll horizontally for more columns');
+ const table=document.createElement('table');table.className='finding-table';table.innerHTML='<caption class="sr-only">Findings in report order. Open a finding to edit.</caption><thead><tr><th scope="col">Finding</th><th scope="col">Observation</th><th scope="col">Location</th><th scope="col">Photos</th><th scope="col">Recommended action</th><th scope="col">Actions</th></tr></thead>';
+ const tbody=document.createElement('tbody');
+ for(const card of cards){
+  const i=+card.dataset.row,row=state.rows[i],tr=document.createElement('tr');tr.dataset.row=i;if(!row.include)tr.className='excluded';
+  const cell=()=>{const td=document.createElement('td');tr.append(td);return td;};
+  const order=cell();order.className='table-order';for(const control of [...card.querySelector('.card-head>div').children])order.append(control);order.append(card.querySelector('.reorder-menu'));
+  const observation=cell(),edit=document.createElement('button');edit.type='button';edit.className='table-finding-title';edit.dataset.editFinding='1';edit.textContent=shortFindingTitle(row);edit.setAttribute('aria-label','Edit '+(row.include?'Finding '+String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'deleted finding')+' - '+shortFindingTitle(row));observation.append(edit);
+  if(row.edit.shortTitle?.trim()){const evidence=document.createElement('p');evidence.className='table-observation';evidence.textContent=row.edit.description||'';observation.append(evidence);}
+  cell().textContent=reportLocation(row);const photos=cell();photos.textContent=card.querySelector('.card-photo-count').textContent;
+  const action=cell();action.className='table-action-text';action.textContent=row.edit.action?.trim()||'-';
+  const actions=cell();actions.className='table-actions';for(const control of [...card.querySelector('.card-actions').children])if(control.matches('button'))actions.append(control);const undo=card.querySelector('.undo-merge');if(undo)actions.append(undo);
+  tr.onclick=e=>{if(!e.target.closest('button,input,label,summary,details,a'))openFinding(i);};
+  for(const type of ['dragover','dragleave','drop'])tr['on'+type]=e=>{card['on'+type]?.(e);tr.classList.toggle('table-drop-target',type==='dragover'&&!!draggedFindingKey);if(type==='drop'||type==='dragleave')tr.classList.remove('table-drop-target');};
+  card.hidden=true;tbody.append(tr);
+ }
+ table.append(tbody);wrap.append(table);host.append(wrap);
+}
+for(const control of document.querySelectorAll('[data-finding-view]'))control.onclick=()=>{findingsView=control.dataset.findingView;try{localStorage.setItem('sfbr-findings-view',findingsView);}catch{}render();};
 $('addInspectionFiles').onclick=()=>$('files').click();
 
 $('expandAll').onclick=()=>{const rows=visibleFindings(state.rows.filter(r=>!r.mergedInto),{inspection:$('filter').value,query:$('search').value,inclusion:$('inclusionFilter').value});const all=rows.every(r=>state.openFindings.has(r.key));for(const r of rows){if(all)state.openFindings.delete(r.key);else state.openFindings.add(r.key);}render();};
@@ -93,7 +120,7 @@ $('selectFindings').onclick=()=>{selectingFindings=!selectingFindings;selectedFi
 $('mergeSelected').onclick=()=>{const rows=state.rows.filter(r=>selectedFindings.has(r.key));$('mergePreview').textContent=rows.map(r=>(r.edit.shortTitle||r.edit.description||'Untitled finding')+' · '+(loc(r.edit)||'Location not entered')).join('\n');$('mergeTitle').value='';$('mergeError').textContent='';$('mergeDialog').showModal();};
 $('cancelMerge').onclick=()=>$('mergeDialog').close();
 $('confirmMerge').onclick=()=>{try{const result=mergeFindings(state.rows,[...selectedFindings],uid(),$('mergeTitle').value);const merged=result.rows.find(r=>r.key===result.key);for(const photo of merged.photos)for(const variant of Object.values(photo.variants))if(variant?.blob)variant.url=URL.createObjectURL(variant.blob);state.rows=result.rows;selectedFindings.clear();selectingFindings=false;$('mergeDialog').close();render();textStatus('Findings merged. Original records are preserved; use Undo merge to restore them.');}catch(e){$('mergeError').textContent=e.message;}};
-function focusOrderMenu(key){requestAnimationFrame(()=>{const index=state.rows.findIndex(r=>r.key===key);$('findings').querySelector('[data-row="'+index+'"] .reorder-menu>summary')?.focus({preventScroll:true});});}
+function focusOrderMenu(key){requestAnimationFrame(()=>{const index=state.rows.findIndex(r=>r.key===key);[...$('findings').querySelectorAll('[data-row="'+index+'"] .reorder-menu>summary')].find(el=>el.getClientRects().length)?.focus({preventScroll:true});});}
 $('cancelPosition').onclick=()=>{$('positionDialog').close();focusOrderMenu(positionFindingKey);};
 $('positionForm').onsubmit=e=>{e.preventDefault();if(!positionFindingKey)return;const key=positionFindingKey;state.rows=moveFinding(state.rows,key,$('positionSelect').value);$('positionDialog').close();render();textStatus('Finding position updated.');focusOrderMenu(key);};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const menu of $('findings').querySelectorAll('.reorder-menu[open]'))menu.open=false;});
@@ -123,7 +150,7 @@ function decorateFindingCards(){
  if(findingDraft){$('saveFinding').disabled=state.busy;$('cancelFinding').disabled=state.busy;}
 }
 function openFinding(i){if(findingDraft||state.busy)return;const original=state.rows[i];findingDraft={original,index:i,expanded:state.expanded,stamp:JSON.stringify(stripURLs(original)),scroll:window.scrollY};state.rows[i]=structuredClone(original);render();$('findingDialog').showModal();$('findingEditorBody').querySelector('[data-field="shortTitle"]').focus();}
-function finishFinding(commit){if(!findingDraft||state.busy)return;const draft=findingDraft,row=state.rows[draft.index];const discarded=commit?draft.original:row,retained=commit?row:draft.original,keep=new Set(retained.photos.flatMap(p=>Object.values(p.variants).filter(Boolean).map(v=>v.url)));for(const photo of discarded.photos)for(const variant of Object.values(photo.variants))if(variant?.url&&!keep.has(variant.url))URL.revokeObjectURL(variant.url);if(!commit){state.rows[draft.index]=draft.original;state.expanded=draft.expanded;}findingDraft=null;$('findingDialog').close();$('discardFindingDialog').close();render();if(commit)$('saveReport').click();requestAnimationFrame(()=>{window.scrollTo(0,draft.scroll);const card=$('findings').querySelector('[data-row="'+draft.index+'"] [data-edit-finding]');card?.focus({preventScroll:true});});}
+function finishFinding(commit){if(!findingDraft||state.busy)return;const draft=findingDraft,row=state.rows[draft.index];const discarded=commit?draft.original:row,retained=commit?row:draft.original,keep=new Set(retained.photos.flatMap(p=>Object.values(p.variants).filter(Boolean).map(v=>v.url)));for(const photo of discarded.photos)for(const variant of Object.values(photo.variants))if(variant?.url&&!keep.has(variant.url))URL.revokeObjectURL(variant.url);if(!commit){state.rows[draft.index]=draft.original;state.expanded=draft.expanded;}findingDraft=null;$('findingDialog').close();$('discardFindingDialog').close();render();if(commit)$('saveReport').click();requestAnimationFrame(()=>{window.scrollTo(0,draft.scroll);const card=[...$('findings').querySelectorAll('[data-row="'+draft.index+'"] [data-edit-finding]')].find(el=>el.getClientRects().length);card?.focus({preventScroll:true});});}
 function cancelFinding(){if(state.busy)return;if(JSON.stringify(stripURLs(state.rows[findingDraft.index]))!==findingDraft.stamp)$('discardFindingDialog').showModal();else finishFinding(false);}
 $('cancelFinding').onclick=cancelFinding;
 $('findingDialog').addEventListener('cancel',e=>{e.preventDefault();cancelFinding();});
