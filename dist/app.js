@@ -83,30 +83,54 @@ function render(){
  document.dispatchEvent(new Event('report-changed'));
  for(const editor of $('findings').querySelectorAll('[data-expand]'))editor.ontoggle=()=>{const key=state.rows[+editor.dataset.expand]?.key;if(key){if(editor.open)state.openFindings.add(key);else state.openFindings.delete(key);}};
 }
+function prepareViewMenu(card,row){
+ const menu=card.querySelector('.reorder-menu'),panel=menu.querySelector('.reorder-menu-items'),remove=card.querySelector('[data-delete-finding]');
+ remove.className='view-menu-delete';remove.textContent=row.include?'Delete finding':'Restore finding';remove.setAttribute('aria-label',remove.textContent);panel.append(remove);
+ const undo=card.querySelector('.undo-merge');if(undo)panel.append(undo);
+ panel.classList.add('finding-menu-overlay');panel.setAttribute('popover','manual');
+ const originalToggle=menu.ontoggle;
+ menu.ontoggle=()=>{
+  originalToggle?.();
+  if(!menu.isConnected)return;
+  if(!menu.open){if(panel.matches(':popover-open'))panel.hidePopover();return;}
+  if(!panel.matches(':popover-open'))panel.showPopover();
+  const anchor=menu.querySelector('summary').getBoundingClientRect(),width=panel.offsetWidth,height=panel.offsetHeight;
+  panel.style.setProperty('left',Math.max(8,Math.min(innerWidth-width-8,anchor.right-width))+'px','important');
+  panel.style.setProperty('top',(anchor.bottom+height+8<=innerHeight?anchor.bottom+5:Math.max(8,anchor.top-height-5))+'px','important');
+ };
+ return menu;
+}
 function renderFindingView(){
  const host=$('findings');host.dataset.view=findingsView;
  for(const control of document.querySelectorAll('[data-finding-view]'))control.setAttribute('aria-pressed',String(control.dataset.findingView===findingsView));
- $('findingViewHint').textContent={cards:'Photo cards',table:'Compare findings - scroll sideways on small screens',list:'Compact overview'}[findingsView];
- if(findingsView!=='table')return;
+ $('findingViewHint').textContent={cards:'Photo cards',table:'Compare full observations and recommended actions',list:'Quick navigation and reordering'}[findingsView];
+ if(findingsView==='cards')return;
  const cards=[...host.querySelectorAll('article[data-row]')];if(!cards.length)return;
- const wrap=document.createElement('div');wrap.className='finding-table-scroll';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','Findings table, scroll horizontally for more columns');
- const table=document.createElement('table');table.className='finding-table';table.innerHTML='<caption class="sr-only">Findings in report order. Open a finding to edit.</caption><thead><tr><th scope="col">Finding</th><th scope="col">Observation</th><th scope="col">Location</th><th scope="col">Photos</th><th scope="col">Recommended action</th><th scope="col">Actions</th></tr></thead>';
+ if(findingsView==='list'){
+  for(const card of cards){const row=state.rows[+card.dataset.row],menu=prepareViewMenu(card,row),actions=card.querySelector('.card-actions');card.querySelector('.edit-finding')?.remove();actions.append(menu);}
+  return;
+ }
+ const wrap=document.createElement('div');wrap.className='finding-table-scroll';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','Findings comparison table, scroll horizontally for more columns');
+ const table=document.createElement('table');table.className='finding-table';table.innerHTML='<caption class="sr-only">Full findings in report order. Open a finding to edit.</caption><thead><tr><th scope="col">No.</th><th scope="col">Observation</th><th scope="col">Location</th><th scope="col">Photos</th><th scope="col">Recommended action</th><th scope="col">Actions</th></tr></thead>';
  const tbody=document.createElement('tbody');
  for(const card of cards){
   const i=+card.dataset.row,row=state.rows[i],tr=document.createElement('tr');tr.dataset.row=i;if(!row.include)tr.className='excluded';
   const cell=()=>{const td=document.createElement('td');tr.append(td);return td;};
-  const order=cell();order.className='table-order';for(const control of [...card.querySelector('.card-head>div').children])order.append(control);order.append(card.querySelector('.reorder-menu'));
-  const observation=cell(),edit=document.createElement('button');edit.type='button';edit.className='table-finding-title';edit.dataset.editFinding='1';edit.textContent=shortFindingTitle(row);edit.setAttribute('aria-label','Edit '+(row.include?'Finding '+String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'deleted finding')+' - '+shortFindingTitle(row));observation.append(edit);
-  if(row.edit.shortTitle?.trim()){const evidence=document.createElement('p');evidence.className='table-observation';evidence.textContent=row.edit.description||'';observation.append(evidence);}
-  cell().textContent=reportLocation(row);const photos=cell();photos.textContent=card.querySelector('.card-photo-count').textContent;
+  const order=cell();order.className='table-order';const selection=card.querySelector('.merge-selection');if(selection)order.append(selection);
+  const number=document.createElement('span');number.className='table-finding-number';number.textContent=row.include?String(reportData().rows.findIndex(r=>r.key===row.key)+1).padStart(2,'0'):'Deleted';order.append(number);
+  const observation=cell(),edit=document.createElement('button');edit.type='button';edit.className='table-finding-title';edit.dataset.editFinding='1';edit.textContent=row.edit.shortTitle?.trim()||row.edit.description?.trim()||'Observation not entered';edit.setAttribute('aria-label','Edit '+(row.include?'Finding '+number.textContent:'deleted finding')+' - '+shortFindingTitle(row));observation.append(edit);
+  if(row.edit.shortTitle?.trim()){const evidence=document.createElement('p');evidence.className='table-observation';evidence.textContent=row.edit.description||'Observation not entered';observation.append(evidence);}
+  cell().textContent=reportLocation(row);cell().textContent=card.querySelector('.card-photo-count').textContent;
   const action=cell();action.className='table-action-text';action.textContent=row.edit.action?.trim()||'-';
-  const actions=cell();actions.className='table-actions';for(const control of [...card.querySelector('.card-actions').children])if(control.matches('button'))actions.append(control);const undo=card.querySelector('.undo-merge');if(undo)actions.append(undo);
+  const actions=cell();actions.className='table-actions';const tools=document.createElement('div');tools.className='table-row-tools';tools.append(card.querySelector('.edit-finding'),prepareViewMenu(card,row));actions.append(tools);
   tr.onclick=e=>{if(!e.target.closest('button,input,label,summary,details,a'))openFinding(i);};
-  for(const type of ['dragover','dragleave','drop'])tr['on'+type]=e=>{card['on'+type]?.(e);tr.classList.toggle('table-drop-target',type==='dragover'&&!!draggedFindingKey);if(type==='drop'||type==='dragleave')tr.classList.remove('table-drop-target');};
   card.hidden=true;tbody.append(tr);
  }
  table.append(tbody);wrap.append(table);host.append(wrap);
 }
+function closeViewMenus(){for(const menu of $('findings').querySelectorAll('.reorder-menu[open]'))menu.open=false;}
+window.addEventListener('resize',closeViewMenus);
+document.addEventListener('scroll',e=>{if(!e.target?.closest?.('.finding-menu-overlay'))closeViewMenus();},true);
 for(const control of document.querySelectorAll('[data-finding-view]'))control.onclick=()=>{findingsView=control.dataset.findingView;try{localStorage.setItem('sfbr-findings-view',findingsView);}catch{}render();};
 $('addInspectionFiles').onclick=()=>$('files').click();
 
