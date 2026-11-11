@@ -1,3 +1,10 @@
+# Version 1.3.0 — 11 Nov 2026
+
+- Added a first-use walkthrough with saved progress, skip and Help restart.
+- Added a separate fictional sample report for trying the walkthrough without a ZIP.
+- Included optional app installation and offline/backup guidance.
+- Added What’s new to the Installed app information dialog.
+
 # Version 1.2.6 — 10 Nov 2026
 
 - Replaced the home storage panel with a compact storage information dialog and footer offline status.
