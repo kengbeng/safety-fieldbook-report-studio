@@ -1,3 +1,9 @@
+# Version 1.3.2 — 11 Nov 2026
+
+- Aligned the combined update control with Safety Fieldbook: save, apply, automatic reload and success confirmation.
+- Retained update intent after delayed activation and added activated-worker reload detection with duplicate reload protection.
+- Scoped open-window checks to Report Studio and protected resumed edits before delayed reloads.
+
 # Version 1.3.1 — 11 Nov 2026
 
 - Centred tutorial pop-up with minimise and return controls.

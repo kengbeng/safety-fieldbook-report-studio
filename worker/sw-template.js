@@ -20,5 +20,5 @@ self.addEventListener('fetch',event=>{
 });
 self.addEventListener('message',event=>{
  if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();
- if(event.data?.type==='STATUS')event.waitUntil((async()=>{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});event.ports[0]?.postMessage({ready:(await Promise.all(ASSETS.map(path=>caches.open(CACHE_NAME).then(cache=>cache.match(path))))).every(Boolean),windows:clients.filter(client=>new URL(client.url).origin===self.location.origin).length,version:CACHE_NAME});})());
+ if(event.data?.type==='STATUS')event.waitUntil((async()=>{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});event.ports[0]?.postMessage({ready:(await Promise.all(ASSETS.map(path=>caches.open(CACHE_NAME).then(cache=>cache.match(path))))).every(Boolean),windows:clients.filter(client=>client.url.startsWith(self.registration.scope)&&client.frameType!=='nested').length,version:CACHE_NAME});})());
 });
