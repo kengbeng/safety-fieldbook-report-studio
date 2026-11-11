@@ -1,3 +1,9 @@
+# Version 1.3.1 — 11 Nov 2026
+
+- Centred tutorial pop-up with minimise and return controls.
+- Explicit navigation, in-dialog editing/export tips, resume and start-again options, and completion screen.
+- Added two fictional sample illustrations. Export, backup and installation are optional.
+
 # Version 1.3.0 — 11 Nov 2026
 
 - Added a first-use walkthrough with saved progress, skip and Help restart.
