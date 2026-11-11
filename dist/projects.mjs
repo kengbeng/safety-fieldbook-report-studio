@@ -76,3 +76,10 @@ export function setProjectDeleted(db,id,revision,deleted){return new Promise((re
  request.onsuccess=()=>{try{result=projectDeletion(request.result,revision,deleted);store.put(result);}catch(e){failure=e;tx.abort();}};
  tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(failure||tx.error||Error('Unable to update this report.'));tx.onabort=()=>reject(failure||tx.error||Error('Unable to update this report.'));
 });}
+
+export function purgeDeletedProjects(db,targets){return new Promise((resolve,reject)=>{
+ if(!Array.isArray(targets)||!targets.length||targets.some(t=>!t||typeof t.id!=='string'||!Number.isInteger(t.revision))||new Set(targets.map(t=>t.id)).size!==targets.length){reject(Error('Select deleted reports to remove.'));return;}
+ const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects');let failure,checked=0;
+ for(const target of targets){const request=store.get(target.id);request.onsuccess=()=>{if(failure)return;const record=request.result;if(!record?.deletedAt||record.revision!==target.revision){failure=Error('A selected report was restored, removed or changed in another tab. Close this dialog, refresh the list and try again.');tx.abort();return;}checked++;if(checked===targets.length)for(const item of targets)store.delete(item.id);};}
+ tx.oncomplete=()=>resolve(targets.length);tx.onerror=()=>reject(failure||tx.error||Error('Unable to permanently delete reports.'));tx.onabort=()=>reject(failure||tx.error||Error('Unable to permanently delete reports.'));
+});}

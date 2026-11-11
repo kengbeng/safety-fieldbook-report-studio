@@ -1,3 +1,9 @@
+# Version 1.3.3 — 11 Nov 2026
+
+- Added Delete permanently and Empty recently deleted with irreversible-action confirmation.
+- Removes deleted reports and embedded photographs while retaining active reports.
+- Rejects stale or restored records atomically before permanent removal.
+
 # Version 1.3.2 — 11 Nov 2026
 
 - Aligned the combined update control with Safety Fieldbook: save, apply, automatic reload and success confirmation.
