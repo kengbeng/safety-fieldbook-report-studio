@@ -1,3 +1,4 @@
+import {startTutorial} from './tutorial.mjs';
 import {startStatusMessages} from './status-messages.mjs';
 import {startStorageProtection} from './storage-protection.mjs';
 import {startPWA} from './pwa.js';
@@ -294,3 +295,5 @@ const storageProtectionControl=startStorageProtection({storage:navigator.storage
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)storageProtectionControl.refresh();});
 
 $("openReportAbout").onclick=()=>{$("userHelpDialog").showModal();$("reportAbout").focus({preventScroll:true});$("reportAbout").scrollIntoView({block:"start"});};
+
+dashboardReady.then(dashboard=>startTutorial({createSample:async()=>{const snapshot=emptyProject();snapshot.fields.title='Sample report - fictional training example';snapshot.fields.purpose='Fictional example for learning Report Studio. Replace with your own inspection evidence.';const inspection={id:'sample-inspection',title:'Sample inspection',date:sgToday(),inspector:'Sample inspector'},finding={id:'sample-finding',reference:'Sample 01',description:'Fictional example: boxes partially obstruct a designated walkway.',building:'Sample building',floor:'1',room:'Sample room',photos:[]};const row=makeRow(inspection,finding,[],'Fictional tutorial example','sample');row.edit.action='Remove the boxes and keep the walkway clear.';snapshot.rows=[row];await dashboard.create(snapshot);}}));

@@ -61,5 +61,5 @@ export async function startDashboard(bridge){
  editorVisible(false);
  try{db=await openProjectDB();projects=await readProjects(db);status('');}catch(e){status('Device storage is unavailable. You can still prepare a report and download a project backup.',true);}
  renderList();
- return {save:saveActive};
+ return {save:saveActive,create:async snapshot=>{if(bridge.busy())throw Error('Wait for file processing to finish.');await saveActive();const now=new Date().toISOString(),record={id:crypto.randomUUID(),title:snapshot.fields.title,revision:0,createdAt:now,updatedAt:now,snapshot};await activate(record);dirty=true;generation++;await saveActive();}};
 }
