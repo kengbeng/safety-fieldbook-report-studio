@@ -1,3 +1,9 @@
+# Version 1.3.4 — 11 Nov 2026
+
+- Added ascending and descending room sorting for all active findings by Building, Floor and Room.
+- Uses stable natural number ordering, keeps incomplete locations last and leaves deleted findings in place.
+- Added Undo sort; wording, photographs and original records are preserved.
+
 # Version 1.3.3 — 11 Nov 2026
 
 - Added Delete permanently and Empty recently deleted with irreversible-action confirmation.

@@ -5,7 +5,7 @@ import {startStorageProtection} from './storage-protection.mjs';
 import {startPWA} from './pwa.js';
 import {startPhotoEditor} from './photo-editor.mjs';
 import {REPORT_FIELDS,REPORT_PRESETS,migrateReportFields,reportPreset} from './report-fields.mjs';
-import {moveFinding,mergeFindings,undoFindingMerge,groupFindingsByInspection} from './findings-ops.mjs?v=20261105-inspections';
+import {moveFinding,mergeFindings,undoFindingMerge,groupFindingsByInspection,sortFindingsByRoom,restoreFindingOrder} from './findings-ops.mjs?v=20261105-inspections';
 import {displayDate,shortFindingTitle,reportInspectors,reportLocation} from './report-model.mjs?v=20261105-photo-editor';
 import {powerpointReport} from './ppt-export.js?v=20261105-photo-editor';
 import {PHOTO_LIMIT,imageMime,removePhoto,restorePhotos,addedPhoto} from './photos.mjs';
@@ -16,7 +16,7 @@ import {previewReport,wordReport,pdfReport} from './report-export.js?v=20261105-
 import {startDashboard} from './dashboard.js?v=20261105-pwa';
 import {stripURLs} from './projects.mjs?v=20261105-pwa';
 import {LIMITS,checkArchiveSize,checkExpandedSize,safePath,validate,keyFor,fingerprint,counts,parseCSV} from './core.mjs?v=20261105-pwa';
-let lastFieldPreset='inspection';let draggedFindingKey=null;let positionFindingKey=null;let findingDraft=null;let selectingFindings=false;const selectedFindings=new Set();
+let lastRoomSort=null;let lastFieldPreset='inspection';let draggedFindingKey=null;let positionFindingKey=null;let findingDraft=null;let selectingFindings=false;const selectedFindings=new Set();
 const photoEditor=startPhotoEditor((photo,blob,base,baseRotation)=>{const previous=photo.variants.report,expanded=state.expanded+blob.size-(previous?.blob.size||0);if(expanded>LIMITS.expanded)throw Error('This report has reached the 1 GB expanded file limit.');const originalUrl=findingDraft?.original.photos.find(p=>p.id===photo.id)?.variants.report?.url;if(previous?.url&&previous.url!==originalUrl)URL.revokeObjectURL(previous.url);state.expanded=expanded;photo.variants.report={blob,mime:blob.type,url:URL.createObjectURL(blob)};photo.editBaseVariant=base;photo.editBaseRotation=baseRotation;photo.variant='report';photo.rotation=0;photo.reportEditRevision=(photo.reportEditRevision||0)+1;render();});
 let ai;let projectGeneration=0;let photoTarget=null;
 let findingsView='cards';try{const saved=localStorage.getItem('sfbr-findings-view');if(['cards','table','list'].includes(saved))findingsView=saved;}catch{}
@@ -54,6 +54,7 @@ async function importFiles(files){if(state.busy||!files.length)return;const batc
 function updateReportDetails(){$('activeReportName').textContent=$('title').value.trim()||'Untitled inspection report';}
 function inspectionCard(g){const edited=state.groupEdits[g.id]||g,logs=state.imports.filter(i=>i.inspectionId===g.id),n=state.rows.filter(r=>r.inspection.id===g.id&&r.include&&!r.mergedInto).length;return `<article class="inspection-card" data-group="${esc(g.id)}"><div class="inspection-card-overview"><div><h3>${esc(edited.title)}</h3><p>${esc(displayDate(edited.date)||'Date not recorded')} · ${n} active finding${n===1?'':'s'}</p></div><details class="inspection-edit"><summary>Edit</summary><div class="grid">${['title','date'].map(k=>`<label>${({title:'Inspection title',date:'Date',inspector:'Inspector(s)'})[k]}<input ${k==='date'?'type="date"':''} data-inspection-field="${k}" value="${esc(edited[k])}"></label>`).join('')}</div><p class="date-help">Changes apply to this report. Finding order stays unchanged.</p></details></div>${g.id==='manual'?'':`<details class="inspection-source"><summary>Source details${logs.some(i=>i.warnings.length)?' · notes to review':''}</summary>${logs.map(i=>`<p class="source-filename">${esc(i.name)}</p><p class="date-help">${esc(i.status)} · ${i.findings??0} source findings · ${i.photos??0} photos · ${i.duplicates??0} duplicates</p>${i.warnings.map(w=>`<div class="warning">${esc(importError(w))}</div>`).join('')}`).join('')}<details><summary>Original inspection metadata</summary><pre>${esc(JSON.stringify(g,null,2))}</pre></details></details>`}</article>`;}
 function render(){
+ const sortable=state.rows.filter(r=>r.include&&!r.mergedInto);$('sortFindings').disabled=sortable.length<2||state.busy||state.exporting;$('undoRoomSort').hidden=!lastRoomSort;$('undoRoomSort').disabled=state.busy||state.exporting;
  updateReportDetails();
  const hasFindings=state.rows.length>0;
  $('compactImport').hidden=!hasFindings;$('importEmptyHeading').hidden=hasFindings;$('importPanelSummary').hidden=!hasFindings;
@@ -235,6 +236,10 @@ setReportFields(REPORT_PRESETS.inspection);
 $('editor').addEventListener('input',()=>{updateReportDetails();if(state.rows.length)showCheck($('reportCheck'),reportData());});$('preparedDate').addEventListener('change',updateReportDetails);
 
 $('groups').onchange=e=>{const field=e.target.dataset.inspectionField;if(!field)return;const id=e.target.closest('[data-group]').dataset.group;const original=state.rows.find(r=>r.inspection.id===id).inspection;state.groupEdits[id]={...(state.groupEdits[id]||original),[field]:e.target.value};render();};
+$('sortFindings').onclick=()=>{if(state.busy||state.exporting||findingDraft)return;const active=state.rows.filter(r=>r.include&&!r.mergedInto),missing=active.filter(r=>!['building','floor','room'].every(key=>String(r.edit?.[key]??'').trim())).length;$('sortFindingsScope').textContent='Sort all '+active.length+' active findings, including those hidden by search or filters. Finding numbers and Word, PDF and PowerPoint exports will follow this order.';$('sortMissingLocations').textContent=missing?missing+' finding'+(missing===1?' has':'s have')+' an incomplete location and will be placed last in either direction.':'All active findings have a building, floor and room.';$('sortFindingsDialog').showModal();};
+$('cancelSortFindings').onclick=()=>$('sortFindingsDialog').close();
+$('applySortFindings').onclick=()=>{if(state.busy||state.exporting||findingDraft)return;const keys=state.rows.map(r=>r.key),direction=$('roomSortDirection').value,next=sortFindingsByRoom(state.rows,direction);$('sortFindingsDialog').close();if(next.every((r,i)=>r.key===keys[i])){textStatus('Findings are already in this room order.');$('sortFindings').focus();return;}lastRoomSort=keys;state.rows=next;render();textStatus('All active findings sorted by building, floor and room ('+direction+'). Finding numbers and exports updated.');$('undoRoomSort').focus();};
+$('undoRoomSort').onclick=()=>{if(!lastRoomSort||state.busy||state.exporting)return;state.rows=restoreFindingOrder(state.rows,lastRoomSort);lastRoomSort=null;render();textStatus('Order before the last room sort restored. Current edits and photographs kept.');$('sortFindings').focus();};
 $('groupFindings').onclick=()=>{if(state.busy)return;$('groupFindingsDialog').showModal();};
 $('cancelGroupFindings').onclick=()=>$('groupFindingsDialog').close();
 $('confirmGroupFindings').onclick=()=>{if(state.busy)return;state.rows=groupFindingsByInspection(state.rows);$('groupFindingsDialog').close();render();textStatus('Findings grouped by inspection. Finding numbers and exports follow this order.');};
@@ -247,7 +252,7 @@ const reportFields=['inspectors','inspectorsEdited','title','department','refere
 const sgToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function emptyProject(){return{rows:[],imports:[],conflicts:[],bytes:0,expanded:0,groupEdits:{},fields:{inspectors:'',inspectorsEdited:false,title:'Safety inspection report',department:'',reference:'',purpose:'',summary:'',preparedDate:sgToday(),coverPage:false,includeContents:false,compactFindings:false,compactPhotoAppendix:false,pptSinglePhoto:false,pptSourceAppendix:false,findingsLayout:'individual',departmentResponse:false,includeRecommendedAction:true,reportFieldSelection:[...REPORT_PRESETS.inspection],reportFieldPreset:'inspection'}};}
 function captureProject(){return stripURLs({rows:state.rows.map(r=>findingDraft&&r.key===findingDraft.original.key?findingDraft.original:r),imports:state.imports,conflicts:state.conflicts,bytes:state.bytes,expanded:findingDraft?findingDraft.expanded:state.expanded,groupEdits:state.groupEdits,fields:{...Object.fromEntries(reportFields.map(k=>[k,$(k).type==='checkbox'?$(k).checked:$(k).value])),reportFieldSelection:readReportFields(),reportFieldPreset:lastFieldPreset}});}
-function loadProject(snapshot){selectedFindings.clear();selectingFindings=false;
+function loadProject(snapshot){lastRoomSort=null;selectedFindings.clear();selectingFindings=false;
  projectGeneration++;ai?.reset();
  const next=structuredClone(snapshot),created=[];
  try{for(const row of [...next.rows,...next.conflicts.map(c=>c.incoming)])for(const photo of row.photos)for(const v of Object.values(photo.variants))if(v){if(!(v.blob instanceof Blob))throw Error('A saved photograph is unavailable.');v.url=URL.createObjectURL(v.blob);created.push(v.url);}}

@@ -2,9 +2,9 @@
 
 Use Node.js 24 or later. These automated checks exercise data handling and generated document structure; they do not replace visual review of screens and exports.
 
-- `node tests/run.mjs` — routine application checks (89 tests).
+- `node tests/run.mjs` — routine application checks (92 tests).
 - `node tests/run.mjs ai` — the parked AI integration (10 tests, simulated responses; no live AI calls or credentials needed).
-- `node tests/run.mjs all` — all 99 tests, including before AI reactivation.
+- `node tests/run.mjs all` — all 102 tests, including before AI reactivation.
 - `node tests/run.mjs ci` — routine checks plus AI when worker, migration, AI feature/client or shared report inputs, AI tests, test runner, package or workflow files change. Manual runs, missing history, and an enabled AI feature use all checks.
 
 GitHub package scripts expose these as `npm test`, `npm run test:ai`, `npm run test:all` and `npm run test:ci`. Pages CI uses the last command and full Git history so it can inspect the complete pushed range.

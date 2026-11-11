@@ -11,3 +11,15 @@ export function mergeFindings(rows,keys,id,title=''){
 export function undoFindingMerge(rows,key){const merged=rows.find(r=>r.key===key);if(!merged?.mergeSources)throw Error('This finding has no merge to undo.');const originals=new Map(merged.mergeSources.map(s=>[s.key,s]));return rows.filter(r=>r.key!==key).map(r=>{const source=originals.get(r.key);if(!source)return r;const {mergedInto,...rest}=r;return {...rest,include:source.include};});}
 
 export function groupFindingsByInspection(rows){const ids=[...new Set(rows.map(r=>r.inspection.id))];return ids.flatMap(id=>rows.filter(r=>r.inspection.id===id));}
+
+export function sortFindingsByRoom(rows,direction='ascending'){
+ if(!['ascending','descending'].includes(direction))throw Error('Choose ascending or descending room order.');
+ const collator=new Intl.Collator('en-SG',{numeric:true,sensitivity:'base'}),fields=['building','floor','room'],value=(row,key)=>String(row.edit?.[key]??'').trim(),complete=row=>fields.every(key=>value(row,key)),factor=direction==='ascending'?1:-1;
+ const sorted=rows.filter(row=>row.include&&!row.mergedInto).map((row,index)=>({row,index})).sort((a,b)=>{
+  const missing=Number(!complete(a.row))-Number(!complete(b.row));if(missing)return missing;
+  for(const key of fields){const av=value(a.row,key),bv=value(b.row,key);if(!av||!bv){if(!!av!==!!bv)return av?-1:1;continue;}const order=collator.compare(av,bv);if(order)return order*factor;}
+  return a.index-b.index;
+ }).map(item=>item.row);
+ let index=0;return rows.map(row=>row.include&&!row.mergedInto?sorted[index++]:row);
+}
+export function restoreFindingOrder(rows,keys){const byKey=new Map(rows.map(row=>[row.key,row])),restored=[];for(const key of keys){if(byKey.has(key)){restored.push(byKey.get(key));byKey.delete(key);}}return [...restored,...byKey.values()];}
