@@ -70,7 +70,7 @@ EVIDENCE AND SAFETY IMPLICATIONS
 Use reported facts and clearly visible conditions. You may describe a safety lapse or potential harm reasonably supported by those conditions. Do not invent defects, measurements, substances, exposure pathways, causes, legal requirements or compliance conclusions.
 Photographs are supplementary evidence. Do not infer hidden conditions, equipment operating status or measurements from an image. If photographs and text conflict, identify the discrepancy briefly in review.
 SHORT TITLE
-Name the main condition or safety lapse directly. Use at most 8 words and 80 characters.
+Name the main condition or safety lapse directly. Aim for at most 8 words and 80 characters; keep the title within 120 characters.
 OBSERVATION
 State the observed condition first, followed by the associated safety lapse or potential harm where reasonably supported.
 Use direct, definite wording. Do not use “possibly”, “appears to”, “might”, “suspected”, “unsure” or similar uncertainty expressions.
@@ -80,12 +80,12 @@ Do not force a safety implication where the evidence does not support one. Do no
 Retain essential measurements, units, quantities and supplied criteria. Do not present a supplied criterion as a legal requirement unless that status is explicitly established.
 Omit administrative building, floor, room and site identifiers because location is shown separately. Retain physical context needed to explain the issue, such as “across the exit route” or “inside the cabinet”.
 Avoid source-attribution phrases such as “the report records”, “it was observed that” or “the photograph shows”. Keep recommendations out of the observation.
-Use 1 or 2 short sentences, at most 60 words and 600 characters.
+Aim for 1 or 2 short sentences, no more than 60 words and 600 characters. Preserve essential evidence if slightly more space is needed.
 CORRECTIVE ACTION
 Give a specific, proportionate action addressing the condition and its supported safety implication. Retain an existing action if adequate.
 Where the cause or condition requires confirmation, state what must be verified and make any subsequent corrective work conditional on the result. Include an immediate precaution where justified by the evidence.
 Do not invent technical specifications, owners, deadlines or legal duties. Do not state or imply that the action has been completed.
-Use 1 or 2 short imperative sentences, at most 40 words and 400 characters.
+Aim for 1 or 2 short imperative sentences, no more than 40 words and 400 characters. Preserve necessary actions if slightly more space is needed.
 OUTPUT
 Return only the required JSON object with shortTitle, observation, correctiveAction and review.
 Use review only for material evidence limitations, contradictions or missing factual detail. Otherwise return an empty string.
@@ -130,8 +130,7 @@ export function parseFindingSuggestion(text, action) {
  if (action === 'finding_review') return {review: result.review.trim(), shortTitle: '', observation: '', correctiveAction: ''};
  // An evidence-only review must never clear the existing finding fields.
  if (['shortTitle','observation','correctiveAction'].every(key=>!result[key].trim()) && result.review.trim()) return Object.fromEntries(Object.keys(fields).map(key=>[key,result[key].trim()]));
- const concise={shortTitle:80,observation:600,correctiveAction:400};
- if(Object.entries(concise).some(([key,max])=>!result[key].trim()||result[key].trim().length>max)||result.shortTitle.trim().split(/\s+/).length>8||result.observation.trim().split(/\s+/).length>60||result.correctiveAction.trim().split(/\s+/).length>40)throw Error('AI wording was incomplete or too long. Your finding is unchanged.');
+ if(['shortTitle','observation','correctiveAction'].some(key=>!result[key].trim()))throw Error('AI omitted a title, observation or corrective action. Your finding is unchanged. Try again or complete the finding manually.');
  return Object.fromEntries(Object.keys(fields).map(key => [key, result[key].trim()]));
 }
 

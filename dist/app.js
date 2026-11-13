@@ -299,7 +299,7 @@ if(AI_ENABLED){document.querySelector('[data-ai="summary"]').hidden=false;ai=sta
  applyFinding(selection,result){
   if(selection.generation!==projectGeneration||selection.snapshot!==aiSnapshot()||!findingDraft||selection.editorSession!==findingDraft.sessionId||findingDraft.original.key!==selection.key)return null;
   const row=state.rows.find(r=>r.key===selection.key),text={shortTitle:result.shortTitle,description:result.observation,action:result.correctiveAction};
-  if(!row||Object.entries(text).some(([key,value])=>typeof value!=='string'||!value.trim()||value.length>({shortTitle:80,description:600,action:400})[key]))return null;
+  if(!row||Object.entries(text).some(([key,value])=>typeof value!=='string'||!value.trim()||value.length>({shortTitle:120,description:12000,action:12000})[key]))return null;
   const old=Object.fromEntries(Object.keys(text).map(key=>[key,row.edit[key]||'']));
   Object.assign(row.edit,text);render();
   return {kind:'finding',generation:projectGeneration,key:row.key,old,text,snapshot:aiSnapshot()};

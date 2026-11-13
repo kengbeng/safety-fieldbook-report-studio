@@ -1,3 +1,8 @@
+## 1.4.1 - 13 Nov 2026
+
+- Keep complete AI finding wording above concise targets and show a length advisory instead of rejecting it.
+- Align editor validation with response limits and distinguish missing fields from length issues.
+
 ## 1.4.0 - 13 Nov 2026
 
 - Release optional user-key AI assistance for photo-supported finding wording and text-only executive summaries.

@@ -60,7 +60,9 @@ export function startAI(bridge){
    if(!result.shortTitle&&!result.observation&&!result.correctiveAction){findingMessage('More factual detail is needed. The finding was not changed.',result.review);return;}
    const change=bridge.applyFinding(chosen,result);
    if(!change){findingMessage('Finding changed while AI was working. No AI text applied. Click the sparkle icon to try again.');return;}
-   record(change);findingMessage('AI updated this finding. Review the fields, then Save changes.',result.review);bridge.notify('AI updated the finding. Save changes when ready.');
+   const longer=[['shortTitle','Title',8,80],['observation','Observation',60,600],['correctiveAction','Corrective action',40,400]].filter(([key,,words,chars])=>result[key].split(/\s+/).length>words||result[key].length>chars).map(([,label])=>label);
+   const message=longer.length?'AI updated this finding. '+longer.join(', ')+' exceeded the suggested length. Edit for concision, then Save changes.':'AI updated this finding. Review the fields, then Save changes.';
+   record(change);findingMessage(message,result.review);bridge.notify('AI updated the finding. Save changes when ready.');
   }catch(error){if(ticket===epoch&&error.name!=='AbortError'){if(error.code==='reconnect')client.disconnect();findingMessage(error.message);}}
   finally{if(ticket===epoch){running=false;operation=null;controller=null;controls();}}
  }

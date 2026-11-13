@@ -1,4 +1,4 @@
-const CACHE_NAME='sfbr-shell-dac2bfbad02660f2';
+const CACHE_NAME='sfbr-shell-1baa29963f240ab2';
 const ASSETS=["/","/ai-api.mjs","/ai-photos.mjs","/ai.js","/app-icon.svg","/app.js","/core.mjs","/dashboard.js","/features.mjs","/findings-ops.mjs","/icons/app-192.png","/icons/app-512.png","/icons/app-maskable-512.png","/index.html","/manifest.webmanifest","/photo-editor.mjs","/photos.mjs","/ppt-export.js","/ppt-plan.mjs","/projects.mjs","/pwa.js","/report-export.js","/report-fields.mjs","/report-library.mjs","/report-model.mjs","/status-messages.mjs","/storage-protection.mjs","/style.css","/tutorial-sample.mjs","/tutorial.mjs","/vendor/docx.js","/vendor/jspdf.js","/vendor/jszip.min.js","/vendor/pptxgen.LICENSE.txt","/vendor/pptxgen.min.js","/workflow.mjs"];
 const PATHS=new Set(ASSETS);
 function validAsset(response,path){

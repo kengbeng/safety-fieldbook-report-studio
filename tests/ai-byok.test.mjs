@@ -130,11 +130,11 @@ test('cancel, closing the editor and source changes prevent automatic applicatio
   cancel(h);h.release();await pending;assert.equal(h.applied,0);assert.deepEqual(h.currentFields,before);assert.equal(h.el('findingAI').disabled,false);
  }
 });
-test('concise wording rejects missing fields, excessive length and overly long titles without truncation',()=>{
+test('finding validation rejects missing fields but preserves wording above concise targets',()=>{
  const valid={review:'',shortTitle:'Partly obstructed walkway',observation:'Boxes partially obstructed the walkway.',correctiveAction:'Remove the boxes.'};
  assert.throws(()=>parseFindingSuggestion(JSON.stringify({...valid,correctiveAction:''}),'finding_improve'));
- assert.throws(()=>parseFindingSuggestion(JSON.stringify({...valid,observation:'word '.repeat(61)}),'finding_improve'));
- assert.throws(()=>parseFindingSuggestion(JSON.stringify({...valid,shortTitle:'one two three four five six seven eight nine'}),'finding_improve'));
+ assert.equal(parseFindingSuggestion(JSON.stringify({...valid,observation:'word '.repeat(61)}),'finding_improve').observation.split(/\s+/).length,61);
+ assert.equal(parseFindingSuggestion(JSON.stringify({...valid,shortTitle:'one two three four five six seven eight nine'}),'finding_improve').shortTitle,'one two three four five six seven eight nine');
  const instructions=prepareRequest({...payload,action:'finding_improve'}).instructions;assert.ok(instructions.includes('without asserting that explanation'));assert.ok(instructions.includes('Move verification of the cause into the corrective action'));
 });
 test('photo selection excludes removed, unchecked or missing copies and preserves report order',()=>{
@@ -238,4 +238,13 @@ test('long summaries are shown intact with an advisory only above 150 words',asy
   assert.ok(h.el('draftSummaryMessage').textContent.includes(count+' words'));
   assert.equal(h.el('draftSummaryMessage').textContent.includes('above the suggested'),count>150);
  }
+});
+
+test('longer finding wording remains editable with an advisory and grouped Undo',async()=>{
+ const h=uiHarness();await h.connect();const before={...h.currentFields};
+ const result={review:'',shortTitle:'Liquid on the walking surface beside the distribution board',observation:Array(65).fill('word').join(' '),correctiveAction:Array(45).fill('action').join(' ')};
+ h.client.suggest=async()=>result;await h.open('finding');
+ assert.equal(h.applied,1);assert.equal(h.currentFields.description,result.observation);assert.equal(h.currentFields.action,result.correctiveAction);
+ assert.match(h.el('findingAIMessage').textContent,/exceeded the suggested length/);
+ h.el('findingAIUndo').onclick();assert.deepEqual(h.currentFields,before);
 });
