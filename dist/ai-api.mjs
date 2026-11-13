@@ -1,3 +1,4 @@
+import {prepareDuplicateRequest,parseDuplicateResult,duplicateFormat} from './duplicate-findings.mjs';
 // A user's key lives only in this closure. Never persist it or return it to callers.
 export function createAIClient(fetcher = (...args) => fetch(...args)) {
  let apiKey = '', generation = 0;
@@ -48,19 +49,20 @@ export function createAIClient(fetcher = (...args) => fetch(...args)) {
    const metadata = images.map(image => ({reference: String(image.reference || '').slice(0, 200), caption: String(image.caption || '').slice(0, 240)}));
    const source = images.length ? JSON.stringify({...JSON.parse(input), photographs: metadata}) : input;
    const content = images.length ? [{role: 'user', content: [{type: 'input_text', text: source}, ...images.map(image => ({type: 'input_image', image_url: image.url, detail: 'auto'}))]}] : [{role: 'user', content: [{type: 'input_text', text: input}]}];
-   const data = await request('responses', apiKey, {model, instructions, input: content, store: false, max_output_tokens: 4096, ...(finding ? {text: {format: findingFormat}} : payload.action==='summary' ? {text: {format: summaryFormat}} : {})}, signal);
+   const data = await request('responses', apiKey, {model, instructions, input: content, store: false, max_output_tokens: 4096, ...(finding ? {text: {format: findingFormat}} : payload.action==='summary' ? {text: {format: summaryFormat}} : payload.action==='duplicates' ? {text:{format:duplicateFormat}} : {})}, signal);
    if (ticket !== generation || signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
    if (data.status !== 'completed') throw fail('The suggestion did not complete. Try again with fewer findings; your report is unchanged.');
    const parts = (Array.isArray(data.output) ? data.output : []).filter(item => item.type === 'message' && item.role === 'assistant').flatMap(item => Array.isArray(item.content) ? item.content : []);
    if (parts.some(part => part.type === 'refusal')) throw fail('OpenAI declined this request. Your report is unchanged.');
    const text = parts.filter(part => part.type === 'output_text').map(part => part.text || '').join('\n').trim();
    if (!text || text.length > 24000) throw fail('No usable suggestion was returned. Your report is unchanged.');
-   return finding ? parseFindingSuggestion(text, payload.action) : payload.action==='summary' ? parseExecutiveSummary(text) : text;
+   return finding ? parseFindingSuggestion(text, payload.action) : payload.action==='summary' ? parseExecutiveSummary(text) : payload.action==='duplicates' ? parseDuplicateResult(text,payload) : text;
   }
  };
 }
 
 export function prepareRequest(payload) {
+ if(payload?.action==='duplicates')return prepareDuplicateRequest(payload);
  const actions = {
   observation: 'Improve the observation wording for clarity, retaining its meaning and factual limits. Do not add recommendations.',
   action: 'Suggest a practical corrective action grounded in the observation. Phrase it as a proposed action requiring competent review. Do not state it has been completed. Where details are insufficient, state what needs confirmation.',

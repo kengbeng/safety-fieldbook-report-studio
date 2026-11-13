@@ -110,3 +110,13 @@ Selection mode shows one compact strip with a count, Select all shown, Clear and
 Help includes a search field that filters and expands matching sections. Clear returns to the previous section layout; Escape in the search field clears the query before closing the dialog.
 
 Successful individual and batch AI updates also correct exact redundant room prefixes locally: Building E8, Level 05 and Room E8-05-007 (or 05-007) becomes Room 007. Levels must match exactly; no numeric padding or location inference is attempted. Leading zeros and suffixes are preserved. Original source records stay unchanged, and room corrections are included in Undo/Redo or batch recovery, with protection for later location edits.
+
+## Possible duplicate findings
+
+AI tools groups bulk AI and Find possible duplicates under one menu. Findings search has its own full-width row; Filters, Select findings and Add finding share a compact action row, with a two-column arrangement on phones.
+
+Find possible duplicates builds same-location candidate pairs across distinct inspection entries locally. Same-date comparisons are the default; an explicit option includes different dates for repeat observations. Complete building/level/room, valid dates and observations are required. Exact room-prefix cleanup and case/spacing are used conservatively. Oversized findings are excluded. Scans above 200 pairs are blocked rather than truncated.
+
+Comparisons use text only: shared location and two finding identifiers, dates, titles, observations and actions. Inspector names and images are not sent. The selected API model returns likely duplicate, related/distinct, repeat observation or insufficient evidence, with reasons. Three-way and larger groups require every pair to support the match; connected but incomplete or contradictory matches are shown as overlapping suggestions, not asserted duplicates.
+
+Progress, Stop and explicit Retry unfinished use the existing tab-only key connection. Results and Keep both/Keep all or Dismiss decisions are saved with the report and backups. No finding fields, inclusion, photos or original records are changed. Changed comparison inputs invalidate suggestions. New scan explicitly replaces saved review metadata. No automatic merging or paid retries.

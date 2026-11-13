@@ -1,3 +1,9 @@
+## 1.7.0 - 13 Nov 2026
+
+- Add text-only Find possible duplicates with conservative location/date grouping, progress, Stop and explicit retries.
+- Review pairs and consistent multi-finding groups without changing or merging records; preserve decisions and mark changed inputs outdated.
+- Group bulk AI and duplicate review in an AI tools menu, with full-width findings search and a compact action row.
+
 ## 1.6.0 - 13 Nov 2026
 
 - Correct exact duplicated building/level prefixes in Room after successful finding AI updates, preserving leading zeros and mismatched values.

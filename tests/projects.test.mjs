@@ -1,3 +1,4 @@
+import {duplicateSource} from '../dist/duplicate-findings.mjs';
 import {mergeFindings,undoFindingMerge} from '../dist/findings-ops.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,4 +33,11 @@ test('AI batch recovery survives project backup without losing original or appli
  const restored=await unpackProject(await(await packProject(snapshot,JSZip)).arrayBuffer(),JSZip);
  assert.deepEqual(restored.aiBatch,snapshot.aiBatch);assert.equal(restored.rows[0].original.description,'Original');
  const bad=structuredClone(snapshot);bad.aiBatch.entries[0].before=null;assert.throws(()=>inspectSnapshot(bad),/Incomplete AI batch/);
+});
+
+test('duplicate review decisions survive a project backup without changing findings',async()=>{
+ const snapshot=fixture(),rows=snapshot.rows.slice(0,2),keys=rows.map(r=>r.key).sort();
+ snapshot.duplicateReview={version:1,model:'gpt-6-luna',includeDates:true,status:'complete',comparisons:[{id:JSON.stringify(keys),keys,sources:keys.map(key=>duplicateSource(rows.find(r=>r.key===key))),state:'done',decision:'keep_both',message:'',result:{classification:'repeat_observation',reason:'Matching condition on different dates.',distinguishingEvidence:'Dates differ.'}}]};
+ const before=structuredClone(snapshot.rows),restored=await unpackProject(await(await packProject(snapshot,JSZip)).arrayBuffer(),JSZip);assert.deepEqual(restored.duplicateReview,snapshot.duplicateReview);assert.deepEqual(restored.rows,before);
+ const bad=structuredClone(snapshot);bad.duplicateReview.comparisons[0].result.classification='certain_duplicate';assert.throws(()=>inspectSnapshot(bad),/Invalid duplicate result/);
 });

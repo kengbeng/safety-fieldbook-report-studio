@@ -22,10 +22,11 @@ let lastRoomSort=null;let lastFieldPreset='inspection';let draggedFindingKey=nul
 const photoEditor=startPhotoEditor((photo,blob,base,baseRotation)=>{const previous=photo.variants.report,expanded=state.expanded+blob.size-(previous?.blob.size||0);if(expanded>LIMITS.expanded)throw Error('This report has reached the 1 GB expanded file limit.');const originalUrl=findingDraft?.original.photos.find(p=>p.id===photo.id)?.variants.report?.url;if(previous?.url&&previous.url!==originalUrl)URL.revokeObjectURL(previous.url);state.expanded=expanded;photo.variants.report={blob,mime:blob.type,url:URL.createObjectURL(blob)};photo.editBaseVariant=base;photo.editBaseRotation=baseRotation;photo.variant='report';photo.rotation=0;photo.reportEditRevision=(photo.reportEditRevision||0)+1;render();});
 let ai;let reportDetailsSession=null;let projectGeneration=0;let photoTarget=null;
 let findingsView='cards';try{const saved=localStorage.getItem('sfbr-findings-view');if(['cards','table','list'].includes(saved))findingsView=saved;}catch{}
-const $=id=>document.getElementById(id), state={rows:[],imports:[],conflicts:[],bytes:0,expanded:0,busy:false,exporting:false,groupEdits:{},aiBatch:null,openFindings:new Set()};
+const $=id=>document.getElementById(id), state={rows:[],imports:[],conflicts:[],bytes:0,expanded:0,busy:false,exporting:false,groupEdits:{},aiBatch:null,duplicateReview:null,openFindings:new Set()};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID();
 const loc=f=>[f.building,f.floor,f.room].filter(Boolean).join(' / ');
+$('findingAITools').hidden=!AI_ENABLED;
 const textStatus=(s,tone='info')=>{$('status').textContent=s;$('status').dataset.tone=tone;};
 const digest=async b=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).map(x=>x.toString(16).padStart(2,'0')).join('');
 function makeRow(d,f,photos,source,signature){return{key:keyFor(d,f),inspection:structuredClone(d),original:structuredClone(f),edit:{...structuredClone(f),category:'',priority:'',action:'',remarks:''},photos,include:true,sources:[source],signature};}
@@ -280,14 +281,14 @@ render();
 const reportFields=['inspectors','inspectorsEdited','title','department','reference','purpose','summary','preparedDate','coverPage','includeContents','compactFindings','compactPhotoAppendix','pptSinglePhoto','pptSourceAppendix','findingsLayout','departmentResponse','includeRecommendedAction'];
 const sgToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function emptyProject(){return{rows:[],imports:[],conflicts:[],bytes:0,expanded:0,groupEdits:{},fields:{inspectors:'',inspectorsEdited:false,title:'Safety inspection report',department:'',reference:'',purpose:'',summary:'',preparedDate:sgToday(),coverPage:false,includeContents:false,compactFindings:false,compactPhotoAppendix:false,pptSinglePhoto:false,pptSourceAppendix:false,findingsLayout:'individual',departmentResponse:false,includeRecommendedAction:true,reportFieldSelection:[...REPORT_PRESETS.inspection],reportFieldPreset:'inspection'}};}
-function captureProject(){return stripURLs({aiBatch:state.aiBatch,rows:state.rows.map(r=>findingDraft&&r.key===findingDraft.original.key?findingDraft.original:r),imports:state.imports,conflicts:state.conflicts,bytes:state.bytes,expanded:findingDraft?findingDraft.expanded:state.expanded,groupEdits:state.groupEdits,fields:{...Object.fromEntries(reportFields.map(k=>[k,$(k).type==='checkbox'?$(k).checked:$(k).value])),reportFieldSelection:readReportFields(),reportFieldPreset:lastFieldPreset}});}
+function captureProject(){return stripURLs({aiBatch:state.aiBatch,duplicateReview:state.duplicateReview,rows:state.rows.map(r=>findingDraft&&r.key===findingDraft.original.key?findingDraft.original:r),imports:state.imports,conflicts:state.conflicts,bytes:state.bytes,expanded:findingDraft?findingDraft.expanded:state.expanded,groupEdits:state.groupEdits,fields:{...Object.fromEntries(reportFields.map(k=>[k,$(k).type==='checkbox'?$(k).checked:$(k).value])),reportFieldSelection:readReportFields(),reportFieldPreset:lastFieldPreset}});}
 function loadProject(snapshot){lastRoomSort=null;selectedFindings.clear();selectingFindings=false;
  projectGeneration++;reportDetailsSession=null;ai?.reset();
  const next=structuredClone(snapshot),created=[];
  try{for(const row of [...next.rows,...next.conflicts.map(c=>c.incoming)])for(const photo of row.photos)for(const v of Object.values(photo.variants))if(v){if(!(v.blob instanceof Blob))throw Error('A saved photograph is unavailable.');v.url=URL.createObjectURL(v.blob);created.push(v.url);}}
  catch(e){created.forEach(URL.revokeObjectURL);throw e;}
  for(const row of state.rows)release(row);for(const c of state.conflicts)release(c.incoming);
- Object.assign(state,{rows:next.rows,imports:next.imports,conflicts:next.conflicts,bytes:next.bytes,expanded:next.expanded,groupEdits:next.groupEdits,aiBatch:next.aiBatch||null,openFindings:new Set()});
+ Object.assign(state,{rows:next.rows,imports:next.imports,conflicts:next.conflicts,bytes:next.bytes,expanded:next.expanded,groupEdits:next.groupEdits,aiBatch:next.aiBatch||null,duplicateReview:next.duplicateReview||null,openFindings:new Set()});
  for(const k of reportFields){if($(k).type==='checkbox')$(k).checked=k==='includeRecommendedAction'?next.fields[k]!==false:!!next.fields[k];else $(k).value=next.fields[k]??(k==='findingsLayout'?'individual':'');}lastFieldPreset=next.fields.reportFieldPreset||((reportPreset(migrateReportFields(next))==='followup')?'followup':'inspection');setReportFields(migrateReportFields(next));$('reportFieldOptions').open=false;$('search').value='';$('filter').value='';$('inclusionFilter').value='included';$('status').textContent='';render();
  $('importLog').open=false;
 }
@@ -300,6 +301,12 @@ startPWA({prepareUpdate:async()=>{if(state.busy||state.exporting||findingDraft||
 const aiSnapshot=()=>JSON.stringify(reportData(),(k,v)=>k==='photos'?v.map(p=>({id:p.id,include:p.include,removed:p.removed,variant:p.variant,rotation:p.rotation,caption:p.caption,revision:p.reportEditRevision,url:p.variants?.[p.variant]?.url})):['original','sources','signature'].includes(k)?undefined:v);
 const aiSummarySnapshot=()=>JSON.stringify({report:aiSnapshot(),session:reportDetailsSession,title:$('draft_title').value,summary:$('draft_summary').value});
 if(AI_ENABLED){document.querySelector('[data-ai="summary"]').hidden=false;ai=startAI({busy:()=>state.busy,notify:textStatus,
+ duplicates:{
+  rows:()=>state.rows.map(row=>({...row,inspection:state.groupEdits[row.inspection.id]||row.inspection})),review:()=>state.duplicateReview,setReview:value=>{state.duplicateReview=value;},generation:()=>projectGeneration,
+  changed:()=>render(),save:async()=>{const dashboard=await dashboardReady;await dashboard.save();},notify:textStatus,
+  canStart(){if(state.busy||state.exporting||findingDraft||document.querySelector('dialog[open]')){textStatus('Finish open edits and processing first.','warning');return false;}if(state.conflicts.length){textStatus('Resolve conflicting versions before comparing findings.','warning');return false;}return true;},
+  openFinding(key){const index=state.rows.findIndex(r=>r.key===key);if(index>=0)openFinding(index);}
+ },
  batch:{
   selected:()=>state.rows.filter(r=>r.include&&!r.mergedInto&&selectedFindings.has(r.key)).map(r=>r.key),
   rows:()=>state.rows,journal:()=>state.aiBatch,setJournal:value=>{state.aiBatch=value;},generation:()=>projectGeneration,
@@ -367,6 +374,12 @@ $('photoFiles').onchange=async e=>{
  finally{state.busy=false;render();textStatus(added+' photo'+(added===1?'':'s')+' added to this finding.'+(failures.length?' '+failures.join(' '):''),failures.length?'warning':'info');}
 };
 
+const aiToolsMenu=$('findingAITools');
+aiToolsMenu.addEventListener('click',event=>{if(event.target.closest('button')){aiToolsMenu.open=false;aiToolsMenu.querySelector('summary').focus();}},true);
+aiToolsMenu.addEventListener('toggle',()=>{if(aiToolsMenu.open)$('findingFilters').open=false;});
+$('findingFilters').addEventListener('toggle',()=>{if($('findingFilters').open)aiToolsMenu.open=false;});
+document.addEventListener('click',event=>{if(!event.target.closest('#findingAITools'))aiToolsMenu.open=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&aiToolsMenu.open){aiToolsMenu.open=false;aiToolsMenu.querySelector('summary').focus();}});
 document.addEventListener('click',e=>{if(!e.target.closest('#findingFilters'))$('findingFilters').open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('findingFilters').open=false;});
 
