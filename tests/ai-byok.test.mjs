@@ -1,3 +1,4 @@
+import {normaliseRoom} from '../dist/room-prefix.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAIClient,prepareRequest,parseFindingSuggestion,parseExecutiveSummary} from '../dist/ai-api.mjs';
@@ -146,7 +147,7 @@ test('AI image copies respect rotation, aspect ratio and maximum dimensions with
 test('application bridge applies one field at a time and detects edits, photo changes and project replacement',()=>{
  const row={key:'r1',include:true,inspection:{id:'i1',date:'2026-11-13'},original:{reference:'F1'},edit:{shortTitle:'Initial',description:'Original observation',action:'Original action'},photos:[photo(1)]};
  const elements={summary:{value:'Original summary',closest:()=>({open:false})},draft_summary:{value:'Original summary'},draft_title:{value:'Synthetic'},reportDetailsDialog:{open:true}};let bridge;
- const context={reportDetailsSession:'details1',findingDraft:{sessionId:'edit1',original:row},state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Synthetic',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:id=>elements[id],startAI:value=>{bridge=value;}};
+ const context={normaliseRoom,reportDetailsSession:'details1',findingDraft:{sessionId:'edit1',original:row},state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Synthetic',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:id=>elements[id],startAI:value=>{bridge=value;}};
  const app=readFileSync(new URL('../dist/app.js',import.meta.url),'utf8'),start=app.indexOf('const aiSnapshot='),end=app.indexOf('\n});\n}',start)+7;
  vm.runInNewContext(app.slice(start,end),context);
  const summarySelection=bridge.select('summary',null);assert.deepEqual(Object.keys(summarySelection.payload.findings[0]),['shortTitle','observation','correctiveAction']);
@@ -169,7 +170,7 @@ test('photo preparation uses edited image bytes, strips metadata through canvas,
 
 test('application bridge applies and undoes the three fields atomically, retaining later manual changes',()=>{
  const row={key:'r1',include:true,inspection:{id:'i1',date:'2026-11-13'},original:{reference:'F1'},edit:{shortTitle:'Initial',description:'Original observation',action:'Original action'},photos:[]};let bridge;
- const context={reportDetailsSession:'details1',findingDraft:{sessionId:'edit1',original:row},state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Synthetic',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:()=>({value:'',closest:()=>({})}),startAI:value=>{bridge=value;}};
+ const context={normaliseRoom,reportDetailsSession:'details1',findingDraft:{sessionId:'edit1',original:row},state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Synthetic',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:()=>({value:'',closest:()=>({})}),startAI:value=>{bridge=value;}};
  const app=readFileSync(new URL('../dist/app.js',import.meta.url),'utf8'),start=app.indexOf('const aiSnapshot='),end=app.indexOf('\n});\n}',start)+7;vm.runInNewContext(app.slice(start,end),context);
  const before={...row.edit},selection=bridge.select('finding',0),result={shortTitle:'New short title',observation:'New observation.',correctiveAction:'Confirm the operating status.'};
  assert.equal(bridge.applyFinding(selection,{...result,correctiveAction:''}),null);assert.deepEqual(row.edit,before);
@@ -209,7 +210,7 @@ test('summary API uses the two-paragraph schema and retains longer output for ed
 test('summary Apply updates only the details draft and rejects changed or closed details sessions',()=>{
  const row={key:'r1',include:true,inspection:{id:'i1'},original:{reference:'F1'},edit:{description:'An observed issue.',action:'An established action.'},photos:[]};let bridge;
  const elements={summary:{value:'Saved summary'},draft_summary:{value:'Unsaved summary edit'},draft_title:{value:'Unsaved report title'},reportDetailsDialog:{open:true}};
- const context={reportDetailsSession:'details1',findingDraft:null,state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Saved title',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:id=>elements[id],startAI:value=>{bridge=value;}};
+ const context={normaliseRoom,reportDetailsSession:'details1',findingDraft:null,state:{rows:[row],conflicts:[],busy:false,groupEdits:{}},AI_ENABLED:true,projectGeneration:1,document:{querySelector:()=>({hidden:true})},reportData:()=>({title:'Saved title',rows:[row]}),loc:()=>'',render(){},textStatus(){},$:id=>elements[id],startAI:value=>{bridge=value;}};
  const app=readFileSync(new URL('../dist/app.js',import.meta.url),'utf8'),start=app.indexOf('const aiSnapshot='),end=app.indexOf('\n});\n}',start)+7;vm.runInNewContext(app.slice(start,end),context);
  let selected=bridge.select('summary',null);assert.equal(selected.current,'Unsaved summary edit');assert.equal(selected.payload.title,'Unsaved report title');
  assert.ok(bridge.apply(selected,'New first paragraph.\n\nManagement follow-up.'));assert.equal(elements.draft_summary.value,'New first paragraph.\n\nManagement follow-up.');assert.equal(elements.summary.value,'Saved summary');

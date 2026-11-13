@@ -101,6 +101,12 @@ The walkthrough follows create/open, import, optional AI-key setup, finding revi
 
 ## Bulk AI findings
 
-AI all findings processes included, unmerged findings regardless of search or view filters. Confirmation shows count, model and photo sharing. Each successful three-field update is saved directly. Stop cancels remaining work; failed, blank or changed findings remain unchanged. API rejection or saving failure stops processing; there are no automatic paid retries. Batch results lists skipped/failed findings and offers explicit Retry failed / unfinished.
+AI all findings processes included, unmerged findings regardless of search or view filters. Confirmation shows count, model and photo sharing. Each successful three-field update is saved directly. While processing, a progress bar shows processed findings and percentage, counting successes, failures and skips. Settings and detailed recovery options stay out of the processing view. Stop cancels remaining work; failed, blank or changed findings remain unchanged. API rejection or saving failure stops processing; there are no automatic paid retries. Batch results lists skipped/failed findings and offers explicit Retry failed / unfinished.
 
 The original wording and applied results are stored together with the report, with a checkpoint before any paid request. Undo batch survives refresh and project-backup transfer and refuses to replace later manual wording. Keep changes and clear Undo explicitly releases the previous recovery before a new batch. Originals and photos remain unchanged. Review the updated findings before export.
+
+Selection mode shows one compact strip with a count, Select all shown, Clear and an Actions menu. Actions include AI selected findings (included only), Merge (same inspection), Delete (with confirmation) and Restore. Hidden selections are counted. The persistent batch banner is removed; AI all findings reopens existing batch results, retries and Undo, including after refresh.
+
+Help includes a search field that filters and expands matching sections. Clear returns to the previous section layout; Escape in the search field clears the query before closing the dialog.
+
+Successful individual and batch AI updates also correct exact redundant room prefixes locally: Building E8, Level 05 and Room E8-05-007 (or 05-007) becomes Room 007. Levels must match exactly; no numeric padding or location inference is attempted. Leading zeros and suffixes are preserved. Original source records stay unchanged, and room corrections are included in Undo/Redo or batch recovery, with protection for later location edits.

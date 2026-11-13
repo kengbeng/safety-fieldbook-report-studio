@@ -12,6 +12,6 @@ test('production release retains existing storage and app identity without beta 
  const manifest=JSON.parse(read('dist/manifest.webmanifest'));
  assert.equal(manifest.name,'Safety Fieldbook Report Studio');
  assert.doesNotMatch(read('dist/index.html'),/AI BETA|AI Beta|AI beta|beta-notice|This beta/);
- assert.match(read('dist/index.html'),/Version 1\.5\.0/);
+ assert.match(read('dist/index.html'),/Version 1\.6\.0/);
  assert.match(read('dist/features.mjs'),/AI_ENABLED=true/);
 });

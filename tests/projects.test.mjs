@@ -28,6 +28,7 @@ test('AI batch recovery survives project backup without losing original or appli
  const snapshot=fixture(),r=snapshot.rows[0];
  const before={shortTitle:'Before',description:'Original wording',action:'Original action'},after={shortTitle:'After',description:r.edit.description,action:r.edit.action};r.edit.shortTitle=after.shortTitle;
  snapshot.aiBatch={version:1,id:'batch-test',model:'gpt-6-luna',photos:true,status:'complete',entries:[{key:r.key,label:'Finding 1',before,after,status:'updated',message:''}]};
+ Object.assign(r.edit,{building:'E8',floor:'05',room:'007'});snapshot.aiBatch.entries[0].roomChange={before:'E8-05-007',after:'007',building:'E8',floor:'05'};
  const restored=await unpackProject(await(await packProject(snapshot,JSZip)).arrayBuffer(),JSZip);
  assert.deepEqual(restored.aiBatch,snapshot.aiBatch);assert.equal(restored.rows[0].original.description,'Original');
  const bad=structuredClone(snapshot);bad.aiBatch.entries[0].before=null;assert.throws(()=>inspectSnapshot(bad),/Incomplete AI batch/);

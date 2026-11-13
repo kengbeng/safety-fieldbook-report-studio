@@ -1,3 +1,13 @@
+## 1.6.0 - 13 Nov 2026
+
+- Correct exact duplicated building/level prefixes in Room after successful finding AI updates, preserving leading zeros and mismatched values.
+- Include room changes in individual Undo/Redo and durable batch recovery, protecting later location edits.
+- Add Help search with matching sections expanded, Clear and a no-results message.
+- Add a compact selection Actions menu for AI selected findings, Merge, Delete and Restore, with Select all shown and Clear.
+- Remove the persistent batch banner; reopen results and saved Undo through AI all findings.
+- Add bulk AI progress with processed counts and percentages, including failed and skipped findings.
+- Simplify confirmation, processing and results into distinct views; collapse detailed issues and recovery options.
+
 ## 1.5.0 - 13 Nov 2026
 
 - Add AI all findings with count/model/photo confirmation, sequential direct updates and per-finding autosave.

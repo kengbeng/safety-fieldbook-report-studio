@@ -40,3 +40,28 @@ test('Undo survives reopening, protects manual edits, and requires explicit reco
 });
 test('Undo saving failure retains the AI wording and recovery',async()=>{const h=harness([row('1')]);await h.run();h.failSave(h.saves+1);await assert.rejects(h.runner.undo(),/Storage full/);assert.equal(h.rows[0].edit.description,'Improved 1');assert.equal(h.journal.entries[0].status,'updated');});
 test('malformed batch recovery cannot be imported',()=>{assert.throws(()=>inspectBatch({version:1}),/Invalid/);const h=harness();return h.run().then(()=>{const j=structuredClone(h.journal);j.entries.push(j.entries[0]);assert.throws(()=>inspectBatch(j),/Invalid/);});});
+
+test('progress settles each attempted finding only after saving, including failures and skips',async()=>{
+ const h=harness([row('1'),row('2',{edit:{shortTitle:'',description:'',action:''}}),row('3')]),settled=[];
+ h.bridge.suggest=async r=>{if(r.key==='3')throw Error('Network unavailable');return suggestion(r.key);};
+ await h.run({onProgress:(journal,entry,phase)=>{if(phase==='settled'){assert.equal(h.persisted.journal.entries.find(e=>e.key===entry.key).status,entry.status);settled.push([entry.key,entry.status]);}}});
+ assert.deepEqual(settled,[['1','updated'],['2','skipped'],['3','failed']]);
+ const retried=[];h.bridge.suggest=async r=>suggestion(r.key);await h.run({retry:true,onProgress:(j,e,phase)=>{if(phase==='settled')retried.push(e.key);}});assert.deepEqual(retried,['3']);
+});
+
+test('selected AI only requests chosen included findings and retains their report numbers',async()=>{
+ const h=harness([row('1'),row('2'),row('3',{include:false}),row('4')]),requested=[];
+ h.bridge.suggest=async r=>{requested.push(r.key);return suggestion(r.key);};
+ await h.run({keys:['2','3']});assert.deepEqual(requested,['2']);assert.equal(h.rows[0].edit.description,'Observed 1');assert.equal(h.rows[2].edit.description,'Observed 3');assert.equal(h.rows[3].edit.description,'Observed 4');assert.equal(h.journal.entries[0].label,'Finding 2');
+ const empty=harness();await assert.rejects(empty.run({keys:[]}),/Include findings/);assert.equal(empty.calls,0);
+});
+
+test('room correction is saved and undone with wording, while later location edits are protected',async()=>{
+ const original=row('1');Object.assign(original.edit,{building:'E8',floor:'05',room:'E8-05-007'});
+ const h=harness([original]);await h.run();assert.equal(original.edit.room,'007');assert.equal(h.persisted.journal.entries[0].roomChange.before,'E8-05-007');inspectBatch(h.persisted.journal);
+ await h.runner.undo();assert.equal(original.edit.room,'E8-05-007');
+ const protectedRow=row('2');Object.assign(protectedRow.edit,{building:'E8',floor:'05',room:'05-07'});const other=harness([protectedRow]);await other.run();protectedRow.edit.room='09';const result=await other.runner.undo();assert.equal(result.protectedCount,1);assert.equal(protectedRow.edit.room,'09');assert.equal(protectedRow.edit.description,'Improved 2');
+});
+test('room correction rolls back if saving the generated finding fails',async()=>{
+ const r=row('1');Object.assign(r.edit,{building:'E8',floor:'05',room:'05-07'});const h=harness([r]);h.failSave(2);await assert.rejects(h.run(),/Storage full/);assert.equal(r.edit.room,'05-07');assert.equal(h.journal.entries[0].roomChange,undefined);
+});

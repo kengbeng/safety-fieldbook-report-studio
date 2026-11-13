@@ -64,7 +64,7 @@ export function startAI(bridge){
    if(!change){findingMessage('Finding changed while AI was working. No AI text applied. Click the sparkle icon to try again.');return;}
    const longer=[['shortTitle','Title',8,80],['observation','Observation',60,600],['correctiveAction','Corrective action',40,400]].filter(([key,,words,chars])=>result[key].split(/\s+/).length>words||result[key].length>chars).map(([,label])=>label);
    const message=longer.length?'AI updated this finding. '+longer.join(', ')+' exceeded the suggested length. Edit for concision, then Save changes.':'AI updated this finding. Review the fields, then Save changes.';
-   record(change);findingMessage(message,result.review);bridge.notify('AI updated the finding. Save changes when ready.');
+   record(change);findingMessage(message+(change.text.room!==undefined?' Room prefix corrected: '+change.old.room+' → '+change.text.room+'.':''),result.review);bridge.notify('AI updated the finding. Save changes when ready.');
   }catch(error){if(ticket===epoch&&error.name!=='AbortError'){if(error.code==='reconnect')client.disconnect();findingMessage(error.message);}}
   finally{if(ticket===epoch){running=false;operation=null;controller=null;controls();}}
  }
@@ -86,7 +86,7 @@ export function startAI(bridge){
   const change=undo[at];if(!change||!bridge.undo(change)){const text='Fields changed since the AI update. Undo was not applied.';findingMessage(text);bridge.notify(text);return;}
   undo.splice(at,1);
   redo.push(change);if(redo.length>20)redo.shift();
-  if(change.kind==='finding')findingMessage('Previous title, observation and corrective action restored.');
+  if(change.kind==='finding')findingMessage('Previous wording and any corrected room restored.');
   bridge.notify('Previous wording restored.');controls();
  }
  $('findingAIUndo').onclick=()=>undoLast(activeKey);
@@ -94,7 +94,7 @@ export function startAI(bridge){
   const at=redo.findLastIndex(change=>change.key===activeKey),change=redo[at];
   if(!change||!bridge.undo({...change,text:change.old,old:change.text})){const text='Fields changed since Undo. Redo was not applied.';findingMessage(text);bridge.notify(text);return;}
   redo.splice(at,1);undo.push(change);if(undo.length>20)undo.shift();
-  findingMessage('AI title, observation and corrective action restored.');bridge.notify('AI wording restored.');controls();
+  findingMessage('AI wording and any corrected room restored.');bridge.notify('AI wording restored.');controls();
  };
  if(bridge.batch)batch=startBatchUI({client,bridge:bridge.batch,photosFor:async(photos,enabled,signal)=>prepareAIPhotos(selectAIPhotos(photos,enabled).photos,signal),locked:()=>running||connecting,setLocked:value=>{running=value;operation=value?'batch':null;controls();},model:()=>$('aiModel').value,includePhotos:()=>$('aiIncludePhotos').checked,openSettings});
  window.addEventListener('pagehide',()=>{clearKey();findingMessage('');});controls();
