@@ -104,7 +104,7 @@ export function startBatchUI({client,bridge,photosFor,locked,setLocked,model,inc
 
  async function start(retry){
   if(running||actionBusy||locked())return;
-  if(!client.connected()){dialog.close();openSettings();bridge.notify('Connect your key, then open AI all included findings again.');return;}
+  if(!client.connected()){dialog.close();openSettings();bridge.notify('Connect your key, then choose Improve findings again.');return;}
   if(!retry&&!prepared)return;
   const total=retry?bridge.journal().entries.filter(e=>e.status==='pending'||e.status==='failed').length:targetRows().length,settled=new Set();
   running=true;setLocked(true);$('aiBatchHeading').textContent='Updating findings';$('aiBatchMessage').textContent='Saving recovery before starting…';

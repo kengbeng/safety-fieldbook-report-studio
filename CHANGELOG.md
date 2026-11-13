@@ -1,3 +1,8 @@
+## 1.7.1 - 14 Nov 2026
+
+- Keep the findings filter overlay within the viewport at narrow widths and limited heights.
+- Align toolbar controls to 44 pixels and expose Improve findings and Check duplicates directly in a separate AI action row.
+
 ## 1.7.0 - 13 Nov 2026
 
 - Add text-only Find possible duplicates with conservative location/date grouping, progress, Stop and explicit retries.

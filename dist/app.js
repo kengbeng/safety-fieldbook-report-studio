@@ -26,7 +26,6 @@ const $=id=>document.getElementById(id), state={rows:[],imports:[],conflicts:[],
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID();
 const loc=f=>[f.building,f.floor,f.room].filter(Boolean).join(' / ');
-$('findingAITools').hidden=!AI_ENABLED;
 const textStatus=(s,tone='info')=>{$('status').textContent=s;$('status').dataset.tone=tone;};
 const digest=async b=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).map(x=>x.toString(16).padStart(2,'0')).join('');
 function makeRow(d,f,photos,source,signature){return{key:keyFor(d,f),inspection:structuredClone(d),original:structuredClone(f),edit:{...structuredClone(f),category:'',priority:'',action:'',remarks:''},photos,include:true,sources:[source],signature};}
@@ -374,12 +373,18 @@ $('photoFiles').onchange=async e=>{
  finally{state.busy=false;render();textStatus(added+' photo'+(added===1?'':'s')+' added to this finding.'+(failures.length?' '+failures.join(' '):''),failures.length?'warning':'info');}
 };
 
-const aiToolsMenu=$('findingAITools');
-aiToolsMenu.addEventListener('click',event=>{if(event.target.closest('button')){aiToolsMenu.open=false;aiToolsMenu.querySelector('summary').focus();}},true);
-aiToolsMenu.addEventListener('toggle',()=>{if(aiToolsMenu.open)$('findingFilters').open=false;});
-$('findingFilters').addEventListener('toggle',()=>{if($('findingFilters').open)aiToolsMenu.open=false;});
-document.addEventListener('click',event=>{if(!event.target.closest('#findingAITools'))aiToolsMenu.open=false;});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&aiToolsMenu.open){aiToolsMenu.open=false;aiToolsMenu.querySelector('summary').focus();}});
+const findingFilterPanel=$('findingFilters').querySelector('.filter-panel');
+function positionFindingFilters(){
+ if(!$('findingFilters').open)return;
+ const trigger=$('findingFilters').querySelector('summary').getBoundingClientRect(),padding=12,gap=6,width=Math.min(300,window.innerWidth-padding*2);
+ findingFilterPanel.style.width=width+'px';findingFilterPanel.style.left=Math.max(padding,Math.min(trigger.left,window.innerWidth-width-padding))+'px';
+ const below=window.innerHeight-trigger.bottom-gap-padding,above=trigger.top-gap-padding,useBelow=below>=Math.min(findingFilterPanel.scrollHeight,300)||below>=above;
+ const available=Math.max(0,Math.min(window.innerHeight-padding*2,useBelow?below:above));findingFilterPanel.style.maxHeight=available+'px';
+ const height=Math.min(findingFilterPanel.scrollHeight,available);
+ findingFilterPanel.style.top=Math.max(padding,Math.min(useBelow?trigger.bottom+gap:trigger.top-gap-height,window.innerHeight-height-padding))+'px';
+}
+$('findingFilters').addEventListener('toggle',positionFindingFilters);
+window.addEventListener('resize',positionFindingFilters);window.addEventListener('scroll',positionFindingFilters,{capture:true,passive:true});
 document.addEventListener('click',e=>{if(!e.target.closest('#findingFilters'))$('findingFilters').open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('findingFilters').open=false;});
 
