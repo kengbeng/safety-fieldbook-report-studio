@@ -1,3 +1,7 @@
+## 1.7.2 - 14 Nov 2026
+
+- Place Improve findings and Check duplicates in the same action row as Filters and Select findings, wrapping only when space is insufficient.
+
 ## 1.7.1 - 14 Nov 2026
 
 - Keep the findings filter overlay within the viewport at narrow widths and limited heights.

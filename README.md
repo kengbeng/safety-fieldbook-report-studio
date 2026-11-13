@@ -113,7 +113,7 @@ Successful individual and batch AI updates also correct exact redundant room pre
 
 ## Possible duplicate findings
 
-Improve findings and Check duplicates are visible directly in a separate AI action row. Findings search has its own full-width row; Filters, Select findings and Add finding share a compact action row. All toolbar controls are 44 pixels high; the filter overlay is positioned inside the viewport and scrolls when necessary.
+Improve findings and Check duplicates share the action row with Filters, Select findings and Add finding; controls wrap when space is insufficient. Findings search has its own full-width row; Filters, Select findings and Add finding share a compact action row. All toolbar controls are 44 pixels high; the filter overlay is positioned inside the viewport and scrolls when necessary.
 
 Find possible duplicates builds same-location candidate pairs across distinct inspection entries locally. Same-date comparisons are the default; an explicit option includes different dates for repeat observations. Complete building/level/room, valid dates and observations are required. Exact room-prefix cleanup and case/spacing are used conservatively. Oversized findings are excluded. Scans above 200 pairs are blocked rather than truncated.
 
