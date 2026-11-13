@@ -1,26 +1,104 @@
+import {createAIClient} from './ai-api.mjs';
+import {selectAIPhotos,prepareAIPhotos} from './ai-photos.mjs';
 const $=id=>document.getElementById(id);
 export function startAI(bridge){
- let connection={configured:false,connected:false},selection=null,running=false,controller=null,undo=null,models=[],poll=null,epoch=0;
- const dialog=$('aiDialog'),message=t=>{$('aiMessage').textContent=t;};
- async function api(path,body){const r=await fetch('/api/ai/'+path,{method:body?'POST':'GET',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:controller?.signal});const data=await r.json().catch(()=>({message:'AI assistance is unavailable. Your report has not changed.'}));if(!r.ok){const e=Object.assign(Error(data.message),{code:data.error});throw e;}return data;}
- function controls(){const connected=connection.connected&&connection.enabled;$('aiConnect').hidden=!!connected||!connection.configured;$('aiDisconnect').hidden=!connection.connected;$('aiModelLabel').hidden=!connected;$('aiGenerate').disabled=running||!connected||!models.length;$('aiApply').disabled=running||!$('aiSuggestion').value.trim();$('aiConnect').disabled=running;$('aiDisconnect').disabled=running;$('aiRefresh').disabled=running;$('aiGenerate').textContent=running?'Preparing suggestion…':'Generate suggestion';$('aiPlanStatus').textContent=!connection.configured?'AI connection pending setup':connected?'Using your ChatGPT plan':'ChatGPT plan not connected';}
- async function refresh(){const ticket=epoch;try{const status=await api('status');if(ticket!==epoch)return;connection=status;if(connection.connected&&connection.enabled){const data=await api('models');if(ticket!==epoch)return;const selected=$('aiModel').value;models=data.models;$('aiModel').replaceChildren(...models.map(m=>Object.assign(document.createElement('option'),{value:m.slug,textContent:m.name})));if(models.some(m=>m.slug===selected))$('aiModel').value=selected;if(!models.length)message('No eligible AI models are available for this account.');else message('Your ChatGPT plan is connected. Review the text below before generating.');}else{models=[];message(connection.configured?'Connect your ChatGPT plan to generate suggestions. Eligible requests use your plan allowance or available credits.':'AI assistance is awaiting the Site owner’s connection setup. Manual editing and export remain available.');}controls();}catch(e){if(ticket!==epoch)return;message(e.message);models=[];controls();}}
- function close(){epoch++;controller?.abort();controller=null;running=false;clearInterval(poll);poll=null;dialog.close();}
- function open(action,row){if(bridge.busy())return;selection=bridge.select(action,row);if(!selection){bridge.notify('Include a finding with an observation before using AI assistance.');return;}
- epoch++;models=[];$('aiHeading').textContent=({observation:'Improve observation wording',action:'Suggest corrective action',summary:'Draft executive summary'})[action];$('aiOriginal').value=selection.current;$('aiSource').value='Report: '+selection.payload.title+'\n\n'+selection.payload.findings.map(f=>[f.reference,f.inspectionDate,f.location,f.observation,f.correctiveAction&&'Current action: '+f.correctiveAction].filter(Boolean).join('\n')).join('\n\n');$('aiSuggestion').value='';$('aiReview').hidden=true;$('aiApply').disabled=true;$('aiSignInLink').hidden=true;message('Checking your ChatGPT connection…');dialog.showModal();controls();refresh();}
- document.addEventListener('click',e=>{const button=e.target.closest('[data-ai]');if(!button)return;const row=button.closest('[data-row]');open(button.dataset.ai,row?Number(row.dataset.row):null);});
- $('aiClose').onclick=close;dialog.addEventListener('cancel',e=>{e.preventDefault();close();});$('aiDiscard').onclick=close;
- $('aiConnect').onclick=async()=>{const popup=window.open('about:blank','_blank');if(popup)popup.opener=null;try{const data=await api('connect',{});if(popup)popup.location.replace(data.url);else{$('aiSignInLink').href=data.url;$('aiSignInLink').hidden=false;}message('Complete the ChatGPT connection in the new tab, then return here.');clearInterval(poll);let attempts=0;poll=setInterval(async()=>{if(!dialog.open||++attempts>60){clearInterval(poll);return;}try{const status=await api('status');if(status.connected&&status.enabled){clearInterval(poll);await refresh();}}catch{}},5000);}catch(e){popup?.close();message(e.message);}};
- $('aiRefresh').onclick=()=>{if(!running)refresh();};
- $('aiDisconnect').onclick=async()=>{try{await api('disconnect',{});await refresh();message('Disconnected from this Site. You can also revoke app access in ChatGPT usage settings.');}catch(e){message(e.message);}};
- $('aiGenerate').onclick=async()=>{if(running||!selection)return;const ticket=epoch;running=true;controller=new AbortController();$('aiReview').hidden=true;$('aiSuggestion').value='';controls();message('Preparing a suggestion. Your report is unchanged…');
- try{const data=await api('suggest',{...selection.payload,model:$('aiModel').value});if(ticket!==epoch)return;$('aiSuggestion').value=data.suggestion;$('aiReview').hidden=false;message('Review and edit the suggestion. Check it against your inspection evidence before applying.');}
- catch(e){if(ticket===epoch&&e.name!=='AbortError'){message(e.message);if(e.code==='reconnect'){connection.connected=false;connection.enabled=false;models=[];}}}
- finally{if(ticket===epoch){running=false;controller=null;controls();}}
+ const client=createAIClient(),settings=$('aiSettingsDialog');
+ let running=false,operation=null,controller=null,undo=[],redo=[],epoch=0,connecting=false,connectController=null,activeKey=null;
+ const summaryMessage=text=>{$('draftSummaryMessage').textContent=text;};
+ function findingMessage(text,notes=''){$('findingAIMessage').textContent=text;$('findingAINotes').textContent=notes;$('findingAINotesBox').hidden=!notes;$('findingAIStatus').hidden=!text;}
+ function controls(){
+  const connected=client.connected(),findingBusy=running&&operation==='finding';
+  $('aiSettingsStatus').textContent=connected?'Connected for this tab':'Not connected';
+  const connection=connecting?'Connecting…':connected?'Connected':'Not connected',model=$('aiModel').selectedOptions[0]?.textContent.replace(' (default)','')||$('aiModel').value;
+  $('aiButtonStatus').textContent='AI · '+model;
+  $('openAISettings').classList.toggle('ai-connected',connected);
+  $('openAISettings').setAttribute('aria-label','AI Settings: '+connection+', '+model);
+  $('openAISettings').title=connection+' · '+model;
+  $('aiKeyEntry').hidden=connected;$('aiDisconnect').hidden=!connected;
+  $('aiConnect').disabled=connecting||running;$('aiConnect').textContent=connecting?'Connecting…':'Connect';$('aiKey').disabled=connecting||running;
+  $('aiModel').disabled=$('aiIncludePhotos').disabled=running;
+  $('draftExecutiveSummary').disabled=running||connecting;$('draftExecutiveSummary').textContent=running&&operation==='summary'?'Drafting summary…':'Draft executive summary';
+  $('draftSummaryCancel').hidden=!(running&&operation==='summary');
+  const icon=$('findingAI');icon.disabled=running||connecting;icon.classList.toggle('is-working',findingBusy);icon.setAttribute('aria-busy',String(findingBusy));icon.title=findingBusy?'Updating finding…':'Update title, observation and corrective action with AI';
+  $('findingAICancel').hidden=!findingBusy;
+  $('findingAIUndo').hidden=running||!undo.some(change=>change.kind==='finding'&&change.key===activeKey);
+  $('findingAIRedo').hidden=running||!redo.some(change=>change.key===activeKey);
+ }
+ function cancelRequest(){epoch++;controller?.abort();controller=null;running=false;operation=null;controls();}
+ function cancelFinding(){if(running&&operation==='finding'){cancelRequest();findingMessage('AI update cancelled. No AI text applied.');}}
+ function cancelSummary(){if(running&&operation==='summary'){cancelRequest();summaryMessage('AI drafting cancelled. The summary was not changed.');}}
+ function clearKey(){client.disconnect();connectController?.abort();cancelRequest();connecting=false;$('aiKey').value='';controls();}
+ function closeSettings(){connectController?.abort();connecting=false;$('aiKey').value='';settings.close();controls();}
+ function openSettings(){controls();$('aiSettingsMessage').textContent='';settings.showModal();}
+ function record(change){redo=redo.filter(item=>item.key!==change.key);undo.push(change);if(undo.length>20)undo.shift();}
+ async function updateSummary(){
+  if(bridge.busy()||running||connecting)return;
+  if(!client.connected()){openSettings();$('aiSettingsMessage').textContent='Connect your key once, then click Draft executive summary.';return;}
+  const chosen=bridge.select('summary',null);
+  if(!chosen){summaryMessage('Include a finding with an observation before drafting a summary.');return;}
+  const ticket=++epoch;running=true;operation='summary';controller=new AbortController();controls();summaryMessage('Drafting the management summary…');
+  try{
+   const text=await client.suggest(chosen.payload,$('aiModel').value,controller.signal);if(ticket!==epoch)return;
+   if(!bridge.apply(chosen,text)){summaryMessage('The report details changed while AI was working. The summary was not replaced. Click Draft executive summary to try again.');return;}
+   const wordCount=text.trim().split(/\s+/).length;
+   summaryMessage(wordCount>150?'Summary updated · '+wordCount+' words. This is above the suggested 150-word limit. Edit it or click Draft executive summary again to shorten it. Save changes to keep it.':'Summary updated · '+wordCount+' words. Save changes to keep it.');$('draft_summary').focus();
+  }catch(error){if(ticket===epoch&&error.name!=='AbortError'){if(error.code==='reconnect')client.disconnect();summaryMessage(error.message);}}
+  finally{if(ticket===epoch){running=false;operation=null;controller=null;controls();}}
+ }
+ async function updateFinding(index){
+  if(bridge.busy()||running||connecting)return;
+  if(!client.connected()){openSettings();$('aiSettingsMessage').textContent='Connect your key once, then click the finding’s sparkle icon.';return;}
+  const chosen=bridge.select('finding',index);
+  if(!chosen){bridge.notify('Enter an observation before updating this finding with AI.');return;}
+  activeKey=chosen.key;const ticket=++epoch;running=true;operation='finding';controller=new AbortController();
+  const signal=controller.signal,model=$('aiModel').value;
+  const {photos,total}=selectAIPhotos(chosen.photos,$('aiIncludePhotos').checked);
+  findingMessage('Updating with AI · '+(photos.length?photos.length+' photo'+(photos.length===1?'':'s')+(total>photos.length?' (first '+photos.length+' of '+total+')':''):'text only')+'…');controls();
+  try{
+   const images=await prepareAIPhotos(photos,signal);if(ticket!==epoch)return;
+   const result=await client.suggest({...chosen.payload,action:'finding_improve'},model,signal,images);if(ticket!==epoch)return;
+   if(!result.shortTitle&&!result.observation&&!result.correctiveAction){findingMessage('More factual detail is needed. The finding was not changed.',result.review);return;}
+   const change=bridge.applyFinding(chosen,result);
+   if(!change){findingMessage('Finding changed while AI was working. No AI text applied. Click the sparkle icon to try again.');return;}
+   record(change);findingMessage('AI updated this finding. Review the fields, then Save changes.',result.review);bridge.notify('AI updated the finding. Save changes when ready.');
+  }catch(error){if(ticket===epoch&&error.name!=='AbortError'){if(error.code==='reconnect')client.disconnect();findingMessage(error.message);}}
+  finally{if(ticket===epoch){running=false;operation=null;controller=null;controls();}}
+ }
+ document.addEventListener('click',e=>{const button=e.target.closest('[data-ai]');if(!button)return;if(button.dataset.ai==='finding'){const row=button.closest('[data-row]');return updateFinding(row?Number(row.dataset.row):null);}return updateSummary();});
+ $('openAISettings').onclick=openSettings;
+ $('aiSettingsClose').onclick=closeSettings;settings.addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
+ $('aiKeyForm').onsubmit=async e=>{
+  e.preventDefault();if(connecting||running)return;const value=$('aiKey').value;$('aiKey').value='';connecting=true;connectController=new AbortController();
+  const current=connectController;controls();$('aiSettingsMessage').textContent='Checking connection…';
+  try{await client.connect(value,current.signal);if(!current.signal.aborted)$('aiSettingsMessage').textContent='Connected. Settings apply to all AI actions in this tab.';}
+  catch(error){if(!current.signal.aborted)$('aiSettingsMessage').textContent=error.message;}
+  finally{if(connectController===current){connecting=false;connectController=null;controls();}}
  };
- $('aiSuggestion').oninput=controls;
- $('aiApply').onclick=()=>{if(!selection||running)return;const text=$('aiSuggestion').value.trim();if(!text)return;const result=bridge.apply(selection,text);if(!result){message('This report or its source text changed while AI was working. Close this suggestion and generate a new one for the current content.');return;}undo=result;close();$('aiUndoBar').hidden=false;bridge.notify('AI suggestion applied. Review the report before exporting.');};
- $('aiUndo').onclick=()=>{if(undo&&bridge.undo(undo)){undo=null;$('aiUndoBar').hidden=true;bridge.notify('Previous wording restored.');}else bridge.notify('The text has changed since applying the suggestion. Undo was not applied.');};
- window.addEventListener('focus',()=>{if(dialog.open&&!running)refresh();});
- return {reset(){undo=null;$('aiUndoBar').hidden=true;}};
+ $('aiDisconnect').onclick=()=>{const wasFinding=operation==='finding',wasSummary=operation==='summary';clearKey();if(wasFinding)findingMessage('Disconnected. No AI text applied.');if(wasSummary)summaryMessage('Disconnected. The summary was not changed.');$('aiSettingsMessage').textContent='Disconnected. Key removed from this tab.';};
+ $('aiModel').onchange=controls;
+ $('findingAICancel').onclick=cancelFinding;$('draftSummaryCancel').onclick=cancelSummary;
+ function undoLast(key){
+  let at=undo.length-1;if(key!=null){at=undo.findLastIndex(change=>change.kind==='finding'&&change.key===key);}
+  const change=undo[at];if(!change||!bridge.undo(change)){const text='Fields changed since the AI update. Undo was not applied.';findingMessage(text);bridge.notify(text);return;}
+  undo.splice(at,1);
+  redo.push(change);if(redo.length>20)redo.shift();
+  if(change.kind==='finding')findingMessage('Previous title, observation and corrective action restored.');
+  bridge.notify('Previous wording restored.');controls();
+ }
+ $('findingAIUndo').onclick=()=>undoLast(activeKey);
+ $('findingAIRedo').onclick=()=>{
+  const at=redo.findLastIndex(change=>change.key===activeKey),change=redo[at];
+  if(!change||!bridge.undo({...change,text:change.old,old:change.text})){const text='Fields changed since Undo. Redo was not applied.';findingMessage(text);bridge.notify(text);return;}
+  redo.splice(at,1);undo.push(change);if(undo.length>20)undo.shift();
+  findingMessage('AI title, observation and corrective action restored.');bridge.notify('AI wording restored.');controls();
+ };
+ window.addEventListener('pagehide',()=>{clearKey();findingMessage('');});controls();
+ return {
+  refresh:controls,
+  prepareFinding(key){cancelFinding();activeKey=key;findingMessage('');controls();},
+  cancelFinding,
+  cancelSummary,
+  prepareDetails(){cancelSummary();summaryMessage('');},
+  reset(){cancelRequest();undo=[];redo=[];activeKey=null;findingMessage('');summaryMessage('');controls();}
+ };
 }

@@ -1,3 +1,101 @@
+## 1.4.0 - 13 Nov 2026
+
+- Release optional user-key AI assistance for photo-supported finding wording and text-only executive summaries.
+- Add shared AI Settings, session-only key retention, cancellation and grouped finding Undo/Redo.
+- Draft concise management summaries with word counts and an advisory above 150 words, without truncation or automatic retries.
+- Preserve production saved reports, database schema, preferences, installed-app identity and offline update behaviour.
+- Remove beta labels and refresh What’s new and AI help. Beta reports can be transferred explicitly using project backups.
+
+## 1.4.0-beta.14 - 13 Nov 2026
+
+- Target 60–100 words for executive summaries, allowing up to 150 where needed.
+- Replace word-limit rejection with a word count and an advisory above 150 words; retain the complete draft for editing without truncation or automatic retries.
+
+## 1.4.0-beta.13 - 13 Nov 2026
+
+- Refine executive summaries to distinguish recorded conditions from potential harm and limit conclusions to included findings.
+- Use specific corrective priorities, a 90-word ceiling without a minimum, and no unsupported management recommendations or severity rankings.
+
+## 1.4.0-beta.12 - 13 Nov 2026
+
+- Refine finding AI to state the condition and supported safety lapse or potential harm directly, preserving essential physical context.
+- Move uncertain explanations into verification actions and retain existing finding text when factual detail is insufficient.
+- Keep executive-summary instructions unchanged.
+
+## 1.4.0-beta.11 - 13 Nov 2026
+
+- Show the selected model in a compact AI button with a connection dot; expose full status in its tooltip and accessible label.
+- Update the button when connecting, disconnecting or changing models.
+
+## 1.4.0-beta.10 - 13 Nov 2026
+
+- State AI observations and supported safety lapses directly, omit location identifiers and avoid source-attribution phrases.
+- Place the Undo icon left of AI; show Redo after Undo and protect later manual edits.
+
+## 1.4.0-beta.9 - 13 Nov 2026
+
+- Keep GPT-5 mini as the default and replace GPT-5 and GPT-4.1 mini in AI Settings with GPT-6.1 Terra, GPT-6.1 Sol and GPT-6 Luna.
+- Use the selected model for both photo-supported findings and text-only executive summaries.
+
+## 1.4.0-beta.8 - 13 Nov 2026
+
+- Draft executive summaries directly into the Edit report details summary field, without a review/apply popup.
+- Preserve cancellation, draft-change protection and the final Save changes action.
+- Replace the single-line saved-summary control with a textarea so paragraph breaks survive saving, reopening and reload.
+
+## 1.4.0-beta.7 - 13 Nov 2026
+
+- Keep Undo AI beside the sparkle icon in each finding editor and remove the report-wide AI undo bar.
+- Move Draft executive summary into Edit report details beside the summary field.
+- Apply AI summaries to the report-details draft; Save changes commits them and Cancel discards them.
+- Reject stale summary results after draft edits or changes to the report-details session.
+
+## 1.4.0-beta.6 - 13 Nov 2026
+
+- Align the API key input and Connect button using one grid row with matching control heights.
+- Place the field label above the row and remove inherited input margins.
+- Stack connection controls on narrow screens and tidy model, photo-toggle and help-text spacing.
+
+## 1.4.0-beta.5 - 13 Nov 2026
+
+- Reframe executive summaries as 60–90 word management briefings rather than findings and action lists.
+- Cover the overall position, key concerns and supported implications, then management attention needed.
+- Exclude individual observations, equipment details and detailed corrective steps.
+- Preserve executive-summary paragraphs in both preview layouts, Word and PDF.
+- Guard against invented decisions, resource needs, owners, deadlines and unsupported overall conclusions.
+
+## 1.4.0-beta.4 - 13 Nov 2026
+
+- Target 80–120 words in two short executive-summary paragraphs: main findings and corrective priorities.
+- Group related issues, use direct language and omit administrative detail and repetitive finding lists.
+- Submit only finding titles, observations and actions for summary generation.
+- Use structured summary output and reject drafts above 120 words without truncating or changing the report.
+
+## 1.4.0-beta.3 - 13 Nov 2026
+
+- Update all three finding fields directly from one sparkle-icon click, with a single grouped Undo.
+- Keep Save changes as the final finding-save action; cancel pending AI when the editor closes.
+- Consolidate API key, model dropdown and photo option in one compact AI Settings popup.
+- Add concise output limits and direct factual wording, moving verification needs into corrective actions.
+- Preserve atomic updates and protect manual edits, photo context and editor-session changes.
+
+## 1.4.0-beta.2 - 13 Nov 2026
+
+- Replace the two field AI buttons with one sparkle icon in the finding editor header.
+- Review the whole finding or improve its title, observation and corrective action together.
+- Show separate editable suggestions with individual Apply controls and sequential Undo.
+- Automatically include up to 6 report-selected photos, with a visible context count, thumbnails and off switch.
+- Prepare reduced JPEG copies using current edits and rotation, without altering original images.
+- Validate structured responses and prevent stale suggestions after text, photograph or project changes.
+
+## 1.4.0-beta.1 - 13 Nov 2026
+
+- Add user-key AI assistance for observations, proposed corrective actions and executive summaries.
+- Add masked key entry, connection testing, session-only memory retention and Disconnect.
+- Submit selected text directly to OpenAI, with review, Apply, cancellation and Undo safeguards.
+- Publish at a separate beta Pages path with separate saved reports, install identity and cache.
+- Add synthetic tests for request contents, key lifecycle, cancellation and safe error handling.
+
 # Version 1.3.4 — 11 Nov 2026
 
 - Added ascending and descending room sorting for all active findings by Building, Floor and Room.

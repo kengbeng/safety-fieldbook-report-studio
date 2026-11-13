@@ -1,5 +1,5 @@
-const CACHE_NAME='sfbr-shell-6705ac946370c825';
-const ASSETS=["/","/ai.js","/app-icon.svg","/app.js","/core.mjs","/dashboard.js","/features.mjs","/findings-ops.mjs","/icons/app-192.png","/icons/app-512.png","/icons/app-maskable-512.png","/index.html","/manifest.webmanifest","/photo-editor.mjs","/photos.mjs","/ppt-export.js","/ppt-plan.mjs","/projects.mjs","/pwa.js","/report-export.js","/report-fields.mjs","/report-library.mjs","/report-model.mjs","/storage-protection.mjs","/style.css","/vendor/docx.js","/vendor/jspdf.js","/vendor/jszip.min.js","/vendor/pptxgen.LICENSE.txt","/vendor/pptxgen.min.js","/workflow.mjs"];
+const CACHE_NAME='sfbr-shell-dac2bfbad02660f2';
+const ASSETS=["/","/ai-api.mjs","/ai-photos.mjs","/ai.js","/app-icon.svg","/app.js","/core.mjs","/dashboard.js","/features.mjs","/findings-ops.mjs","/icons/app-192.png","/icons/app-512.png","/icons/app-maskable-512.png","/index.html","/manifest.webmanifest","/photo-editor.mjs","/photos.mjs","/ppt-export.js","/ppt-plan.mjs","/projects.mjs","/pwa.js","/report-export.js","/report-fields.mjs","/report-library.mjs","/report-model.mjs","/status-messages.mjs","/storage-protection.mjs","/style.css","/tutorial-sample.mjs","/tutorial.mjs","/vendor/docx.js","/vendor/jspdf.js","/vendor/jszip.min.js","/vendor/pptxgen.LICENSE.txt","/vendor/pptxgen.min.js","/workflow.mjs"];
 const PATHS=new Set(ASSETS);
 function validAsset(response,path){
  if(!response.ok||response.redirected||!['basic','default'].includes(response.type))return false;
@@ -20,5 +20,5 @@ self.addEventListener('fetch',event=>{
 });
 self.addEventListener('message',event=>{
  if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();
- if(event.data?.type==='STATUS')event.waitUntil((async()=>{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});event.ports[0]?.postMessage({ready:(await Promise.all(ASSETS.map(path=>caches.open(CACHE_NAME).then(cache=>cache.match(path))))).every(Boolean),windows:clients.filter(client=>new URL(client.url).origin===self.location.origin).length,version:CACHE_NAME});})());
+ if(event.data?.type==='STATUS')event.waitUntil((async()=>{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});event.ports[0]?.postMessage({ready:(await Promise.all(ASSETS.map(path=>caches.open(CACHE_NAME).then(cache=>cache.match(path))))).every(Boolean),windows:clients.filter(client=>client.url.startsWith(self.registration.scope)&&client.frameType!=='nested').length,version:CACHE_NAME});})());
 });

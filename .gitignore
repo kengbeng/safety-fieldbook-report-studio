@@ -6,3 +6,5 @@ node_modules/
 dist/.openai/
 dist/server/
 *.fieldbook-report.zip
+
+pages-site/
