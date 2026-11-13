@@ -98,3 +98,9 @@ The compact AI button shows the selected model with a green connection dot when 
 ## Guided walkthrough and Help
 
 The walkthrough follows create/open, import, optional AI-key setup, finding review, report details and optional summary, export, backup and optional installation. AI can be skipped, and the fictional sample bypasses ZIP import. Earlier tutorial progress maps to the corresponding revised step; completed tutorials stay completed. Restart from Help to see the new AI steps. Help includes API-key setup, session-only retention, billing/model permissions, photo sharing, Undo/Redo, summaries, cancellation and troubleshooting.
+
+## Bulk AI findings
+
+AI all findings processes included, unmerged findings regardless of search or view filters. Confirmation shows count, model and photo sharing. Each successful three-field update is saved directly. Stop cancels remaining work; failed, blank or changed findings remain unchanged. API rejection or saving failure stops processing; there are no automatic paid retries. Batch results lists skipped/failed findings and offers explicit Retry failed / unfinished.
+
+The original wording and applied results are stored together with the report, with a checkpoint before any paid request. Undo batch survives refresh and project-backup transfer and refuses to replace later manual wording. Keep changes and clear Undo explicitly releases the previous recovery before a new batch. Originals and photos remain unchanged. Review the updated findings before export.

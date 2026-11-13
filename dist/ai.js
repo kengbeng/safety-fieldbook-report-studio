@@ -1,8 +1,9 @@
+import {startBatchUI} from './ai-batch.mjs';
 import {createAIClient} from './ai-api.mjs';
 import {selectAIPhotos,prepareAIPhotos} from './ai-photos.mjs';
 const $=id=>document.getElementById(id);
 export function startAI(bridge){
- const client=createAIClient(),settings=$('aiSettingsDialog');
+ const client=createAIClient(),settings=$('aiSettingsDialog');let batch=null;
  let running=false,operation=null,controller=null,undo=[],redo=[],epoch=0,connecting=false,connectController=null,activeKey=null;
  const summaryMessage=text=>{$('draftSummaryMessage').textContent=text;};
  function findingMessage(text,notes=''){$('findingAIMessage').textContent=text;$('findingAINotes').textContent=notes;$('findingAINotesBox').hidden=!notes;$('findingAIStatus').hidden=!text;}
@@ -23,8 +24,9 @@ export function startAI(bridge){
   $('findingAICancel').hidden=!findingBusy;
   $('findingAIUndo').hidden=running||!undo.some(change=>change.kind==='finding'&&change.key===activeKey);
   $('findingAIRedo').hidden=running||!redo.some(change=>change.key===activeKey);
+  batch?.refresh();
  }
- function cancelRequest(){epoch++;controller?.abort();controller=null;running=false;operation=null;controls();}
+ function cancelRequest(){if(operation==='batch')batch?.stop();epoch++;controller?.abort();controller=null;running=false;operation=null;controls();}
  function cancelFinding(){if(running&&operation==='finding'){cancelRequest();findingMessage('AI update cancelled. No AI text applied.');}}
  function cancelSummary(){if(running&&operation==='summary'){cancelRequest();summaryMessage('AI drafting cancelled. The summary was not changed.');}}
  function clearKey(){client.disconnect();connectController?.abort();cancelRequest();connecting=false;$('aiKey').value='';controls();}
@@ -94,6 +96,7 @@ export function startAI(bridge){
   redo.splice(at,1);undo.push(change);if(undo.length>20)undo.shift();
   findingMessage('AI title, observation and corrective action restored.');bridge.notify('AI wording restored.');controls();
  };
+ if(bridge.batch)batch=startBatchUI({client,bridge:bridge.batch,photosFor:async(photos,enabled,signal)=>prepareAIPhotos(selectAIPhotos(photos,enabled).photos,signal),locked:()=>running||connecting,setLocked:value=>{running=value;operation=value?'batch':null;controls();},model:()=>$('aiModel').value,includePhotos:()=>$('aiIncludePhotos').checked,openSettings});
  window.addEventListener('pagehide',()=>{clearKey();findingMessage('');});controls();
  return {
   refresh:controls,

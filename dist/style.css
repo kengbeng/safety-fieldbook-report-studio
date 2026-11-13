@@ -169,3 +169,5 @@ header>.pwa-home-actions{align-items:center}header>.pwa-home-actions>.button{hei
 
 
 .ai-settings-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}.ai-connection-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#64748b}.ai-settings-button.ai-connected .ai-connection-dot{background:#16803c}
+
+.ai-batch-recovery{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;margin:12px 0;background:#edf3fa;border-left:3px solid #ef7c00;border-radius:6px;font-size:13px}.ai-batch-recovery[hidden]{display:none}#aiBatchDialog{max-width:680px;max-height:calc(100dvh - 32px);overflow:auto}#aiBatchDialog p,#aiBatchDialog li{font-size:14px;line-height:1.6;overflow-wrap:anywhere}#aiBatchDialog .clear-actions{flex-wrap:wrap}#aiBatchIssues{max-height:200px;overflow:auto}

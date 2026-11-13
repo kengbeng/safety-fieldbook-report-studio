@@ -1,3 +1,9 @@
+## 1.5.0 - 13 Nov 2026
+
+- Add AI all findings with count/model/photo confirmation, sequential direct updates and per-finding autosave.
+- Add Stop, failure/skipped results, explicit retries and durable batch Undo that protects later manual wording.
+- Save recovery with the project before AI requests; retain it across refresh and project backups.
+
 ## 1.4.2 - 13 Nov 2026
 
 - Set GPT-6 Luna as the default model for findings and executive summaries.

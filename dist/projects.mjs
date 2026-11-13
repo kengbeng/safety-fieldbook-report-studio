@@ -1,3 +1,4 @@
+import {inspectBatch} from './ai-batch.mjs';
 import {REPORT_FIELDS} from './report-fields.mjs';
 export const PROJECT_FORMAT='safety-fieldbook-report-project';
 export const PROJECT_VERSION=1;
@@ -17,6 +18,7 @@ export function inspectSnapshot(s){
  if(s.fields.findingsLayout!==undefined&&!['individual','consolidated'].includes(s.fields.findingsLayout))throw Error('Invalid findings layout.');
  if(!s.groupEdits||typeof s.groupEdits!=='object'||Array.isArray(s.groupEdits))throw Error('Invalid inspection edits.');
  for(const g of Object.values(s.groupEdits))for(const k of ['id','title','date','inspector'])if(typeof g?.[k]!=='string')throw Error('Invalid inspection details.');
+ inspectBatch(s.aiBatch);
  const ids=new Set();for(const row of s.rows){checkRow(row);if(ids.has(row.key))throw Error('Repeated finding in project.');ids.add(row.key);}
  for(const r of s.rows){if(r.mergedInto!==undefined&&(typeof r.mergedInto!=='string'||!ids.has(r.mergedInto)))throw Error('Invalid merged finding link.');if(r.mergeSources!==undefined&&(!Array.isArray(r.mergeSources)||r.mergeSources.length<2||r.mergeSources.some(source=>!ids.has(source.key)||typeof source.include!=='boolean'||typeof source.original?.id!=='string'||typeof source.inspection?.id!=='string')))throw Error('Invalid merged source records.');}
  for(const c of s.conflicts){if(!ids.has(c.key)||typeof c.id!=='string')throw Error('Invalid conflict reference.');checkRow(c.incoming);if(c.incoming.key!==c.key)throw Error('Conflict does not match its finding.');}
