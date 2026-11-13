@@ -41,7 +41,7 @@ import {readFileSync} from 'node:fs';
 function uiHarness(photos=[],{deferred=false,reviewOnly=false}={}){
  let release;
  const elements=new Map(),events={},windowEvents={};
- const el=id=>{if(!elements.has(id))elements.set(id,{value:id==='aiModel'?'gpt-5-mini':'',selectedOptions:[{textContent:'GPT-5 mini (default)'}],classList:{toggle(){}},setAttribute(){},checked:true,style:{},hidden:false,disabled:false,open:false,textContent:'',focus(){},children:[],replaceChildren(...children){this.children=children;},append(...children){this.children.push(...children);},addEventListener(name,fn){this[name]=fn;},showModal(){this.open=true;},close(){this.open=false;}});return elements.get(id);};
+ const el=id=>{if(!elements.has(id))elements.set(id,{value:id==='aiModel'?'gpt-6-luna':'',selectedOptions:[{textContent:'GPT-6 Luna (default)'}],classList:{toggle(){}},setAttribute(){},checked:true,style:{},hidden:false,disabled:false,open:false,textContent:'',focus(){},children:[],replaceChildren(...children){this.children=children;},append(...children){this.children.push(...children);},addEventListener(name,fn){this[name]=fn;},showModal(){this.open=true;},close(){this.open=false;}});return elements.get(id);};
  const calls=[],client=createAIClient(async(url,options)=>{
   calls.push({url,options});if(url.endsWith('/models'))return Response.json({data:[]});
   const body=JSON.parse(options.body);
@@ -89,7 +89,7 @@ test('malformed or oversized structured suggestions are rejected and review mode
  const result=parseFindingSuggestion(JSON.stringify({review:'Evidence gap',shortTitle:'Ignore this',observation:'Ignore this',correctiveAction:'Ignore this'}),'finding_review');assert.equal(result.observation,'');assert.equal(result.shortTitle,'');
 });
 test('compact AI button shows the selected model and connection status without exposing the key',async()=>{
- const h=uiHarness();assert.equal(h.el('aiButtonStatus').textContent,'AI · GPT-5 mini');assert.match(h.el('openAISettings').title,/Not connected/);
+ const h=uiHarness();assert.equal(h.el('aiButtonStatus').textContent,'AI · GPT-6 Luna');assert.match(h.el('openAISettings').title,/Not connected/);
  await h.connect();assert.match(h.el('openAISettings').title,/Connected/);assert.doesNotMatch(h.el('openAISettings').title,new RegExp(key));
  h.el('aiModel').value='gpt-6.1-terra';h.el('aiModel').selectedOptions=[{textContent:'GPT-6.1 Terra'}];h.el('aiModel').onchange();assert.equal(h.el('aiButtonStatus').textContent,'AI · GPT-6.1 Terra');
  h.el('aiDisconnect').onclick();assert.match(h.el('openAISettings').title,/Not connected/);assert.equal(h.el('aiButtonStatus').textContent,'AI · GPT-6.1 Terra');
@@ -188,7 +188,7 @@ test('executive summary input omits administrative details and requests only man
  const request=prepareRequest({...payload,action:'summary',findings:[{...payload.findings[0],reference:'FINDING-99',inspectionDate:'2026-10-22',location:'Room ADMIN-13A'}]});
  const input=JSON.parse(request.input);assert.deepEqual(Object.keys(input.findings[0]),['shortTitle','observation','correctiveAction']);
  for(const irrelevant of ['FINDING-99','2026-10-22','ADMIN-13A','must-not-send'])assert.ok(!request.input.includes(irrelevant));
- for(const rule of ['Target 60 to 100 words','up to 150 words only when needed','Do not add filler to reach a minimum length','do not establish the condition of the whole site','Distinguish observed conditions from potential harm','Do not turn a possible consequence into an actual incident','without repeating detailed corrective steps','only where explicitly recorded','Do not add generic calls','Do not invent severity ratings','Do not generalise from individual findings','Retain a specific detail only when essential'])assert.ok(request.instructions.includes(rule),rule);
+ for(const rule of ['Target 60 to 100 words','up to 150 words only when needed','busy reader who has not read the findings','usually 2 or 3 short sentences','Name the actual conditions','Group related findings only when the connection is clear','State what needs to happen next','usually 12 to 20 words','Prioritise readability over reaching a word target','Do not add filler to reach a minimum length','do not establish the condition of the whole site','Distinguish observed conditions from potential harm','Do not turn a possible consequence into an actual incident','without repeating detailed corrective steps','only where explicitly recorded','Do not add generic calls','Do not invent severity ratings','Do not generalise from individual findings','Retain a specific detail only when essential'])assert.ok(request.instructions.includes(rule),rule);
  assert.ok(!request.instructions.includes('Target 60 to 90'));
  assert.ok(!request.instructions.includes('proportionate oversight'));
 });
@@ -247,4 +247,11 @@ test('longer finding wording remains editable with an advisory and grouped Undo'
  assert.equal(h.applied,1);assert.equal(h.currentFields.description,result.observation);assert.equal(h.currentFields.action,result.correctiveAction);
  assert.match(h.el('findingAIMessage').textContent,/exceeded the suggested length/);
  h.el('findingAIUndo').onclick();assert.deepEqual(h.currentFields,before);
+});
+
+test('GPT-6 Luna is the default option and drives finding and summary requests',async()=>{
+ const html=readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
+ assert.match(html,/<select id="aiModel"><option value="gpt-6-luna">GPT-6 Luna \(default\)<\/option>/);
+ const h=uiHarness();await h.connect();await h.open('finding');assert.equal(JSON.parse(h.calls.at(-1).options.body).model,'gpt-6-luna');
+ await h.open('summary');assert.equal(JSON.parse(h.calls.at(-1).options.body).model,'gpt-6-luna');
 });

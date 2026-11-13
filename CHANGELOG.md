@@ -1,3 +1,12 @@
+## 1.4.2 - 13 Nov 2026
+
+- Set GPT-6 Luna as the default model for findings and executive summaries.
+- Add optional API-key setup and report-details/summary steps to the tutorial, preserving existing progress.
+- Expand Help with API-key setup, AI usage/privacy, draft saving, length notices, troubleshooting and in-dialog updates.
+- Let the app information dialog check for updates and apply an available update directly, with in-dialog status and existing save/reload safeguards.
+- Make executive summaries easier to read with concrete safety concerns, brief recorded next steps and shorter sentences.
+- Avoid abstract management language and dense grouping; prioritise clarity over reaching a word target.
+
 ## 1.4.1 - 13 Nov 2026
 
 - Keep complete AI finding wording above concise targets and show a length advisory instead of rejecting it.
